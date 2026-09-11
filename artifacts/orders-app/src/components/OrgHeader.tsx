@@ -58,6 +58,8 @@ export function OrgHeader() {
     }
   };
 
+  if (!organization || !currentMember) return null;
+
   return (
     <>
       <div className="org-header-bar">

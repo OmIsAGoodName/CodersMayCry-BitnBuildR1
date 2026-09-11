@@ -11,7 +11,7 @@ import {
   CloudOff, CloudUpload, Database, Download, FileJson, Filter, Home, Inbox, IndianRupee,
   Layers3, MoreHorizontal, Plus, RefreshCw, RotateCcw, Search, Settings as SettingsIcon,
   Sparkles, Trash2, Upload, Wifi, WifiOff, X, Zap, Cpu, Play, Key, SlidersHorizontal, Copy, User,
-  Menu, ArrowLeft
+  Menu, ArrowLeft, LogOut
 } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -33,6 +33,7 @@ import { StructuredJsonPage } from '@/pages/StructuredJsonPage';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { DayTracker, applyDayTheme } from '@/components/DayTracker';
 import { BrandLogo } from '@/components/BrandLogo';
+import { AuthScreen } from '@/components/AuthScreen';
 import { runScenario1, runScenario2, runScenario3, ScenarioTestResult } from '@/lib/sync/conflictScenarios';
 
 const queryClient = new QueryClient();
@@ -75,7 +76,7 @@ function maskKey(key: string): string {
 function AppShell({ children, settings, online, pendingSyncCount }: { children: ReactNode; settings: Settings; online: boolean; pendingSyncCount: number }) {
   const [location] = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { currentMember, organization } = useOrgAuth();
+  const { currentMember, organization, currentUser, logout } = useOrgAuth();
 
   const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
     try {
@@ -167,13 +168,13 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
 
         {/* Dynamic Operator Profile at Top - Always accessible without scrolling */}
         <Link href="/team" className="operator-profile-card" title="Click to view/manage Team & Roles Hierarchy">
-          <span className="initials">{currentMember.avatarInitials}</span>
+          <span className="initials">{currentMember?.avatarInitials || 'OW'}</span>
           <div className="operator-info">
             <div className="operator-name-row">
-              <strong>{currentMember.name}</strong>
-              <span className={`operator-badge badge-${currentMember.role}`}>{currentMember.role.toUpperCase()}</span>
+              <strong>{currentMember?.name || "Owner"}</strong>
+              <span className={`operator-badge badge-${currentMember?.role || "owner"}`}>{(currentMember?.role || "owner").toUpperCase()}</span>
             </div>
-            <small className="operator-domain">{organization.name}</small>
+            <small className="operator-domain">{organization?.name || "Store Ledger"}</small>
           </div>
         </Link>
 
@@ -1811,7 +1812,7 @@ function SettingsPage({
 }
 
 function App() {
-  const { organization, currentMember } = useOrgAuth();
+  const { organization, currentMember, currentUser, isAuthenticated, logout } = useOrgAuth();
   const [loaded, setLoaded] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [settings, setSettings] = useState<Settings>({
@@ -1914,7 +1915,7 @@ function App() {
     // Cloud sync to Supabase
     enqueueMutation('upsert', nextOrder.id, nextOrder);
     if (navigator.onLine) {
-      flushPendingMutations(organization.id).then((count) => {
+      organization?.id && flushPendingMutations(organization.id).then((count) => {
         if (count > 0) notify('Backed up to Supabase Cloud');
       });
     }
@@ -1986,6 +1987,10 @@ function App() {
     setConflicts((prev) => prev.map((c) => (c.id === id ? { ...c, resolved: true, resolution } : c)));
     notify(`Conflict resolved: ${resolution}`);
   };
+
+    if (!isAuthenticated || !currentUser) {
+    return <AuthScreen onSuccess={() => window.location.reload()} />;
+  }
 
   if (!loaded) {
     return (

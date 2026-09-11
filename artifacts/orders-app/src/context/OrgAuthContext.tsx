@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+﻿import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase, CloudOrganization } from '@/lib/supabase';
+import { AppUser, getCurrentUser, logoutUser } from '@/lib/auth/userAuth';
 import { User, Session } from '@supabase/supabase-js';
 
 export type UserRole = 'owner' | 'manager' | 'operator';
@@ -14,32 +15,33 @@ export interface OrgMemberProfile {
 }
 
 interface OrgAuthContextType {
+  // Authentication & Current User
+  currentUser: AppUser | null;
+  isAuthenticated: boolean;
+  logout: () => void;
+
   // Multi-tenancy
-  organization: CloudOrganization;
+  organization: CloudOrganization | null;
   organizations: CloudOrganization[];
   switchOrganization: (orgId: string) => void;
   createOrganization: (orgName: string, ownerName: string) => Promise<void>;
-  
+
   // Member & Hierarchy
-  currentMember: OrgMemberProfile;
+  currentMember: OrgMemberProfile | null;
   members: OrgMemberProfile[];
   switchMember: (memberId: string) => void;
   addMember: (name: string, role: UserRole, email?: string) => Promise<void>;
-  
-  // Supabase Auth & Multi-Device Login
+
+  // Legacy Supabase session support
   user: User | null;
   session: Session | null;
-  loginWithEmail: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  signUpWithEmail: (email: string, password: string, fullName: string, storeName: string) => Promise<{ ok: boolean; error?: string }>;
-  loginWithStoreCode: (code: string, memberName?: string) => Promise<{ ok: boolean; error?: string }>;
-  logout: () => Promise<void>;
-  
+
   // Permissions
   canManageSettings: boolean;
   canApproveOrders: boolean;
   canDeleteRecords: boolean;
   canIntakeOrders: boolean;
-  
+
   // Connection & Sync
   isOnline: boolean;
   pendingSyncCount: number;
@@ -49,132 +51,114 @@ interface OrgAuthContextType {
   syncNow: () => Promise<void>;
 }
 
-const DEFAULT_ORGS: CloudOrganization[] = [
-  {
-    id: 'org_vendora_main',
-    name: 'Vendora Flagship Ledger',
-    slug: 'vendora-main',
-    capacity: 15,
-    currency: 'INR',
-  },
-];
-
-const DEFAULT_MEMBERS: OrgMemberProfile[] = [
-  { id: 'mem_om', name: 'Om Shetkar', role: 'owner', email: 'om@vendora.local', avatarInitials: 'OS' },
-  { id: 'mem_ritu', name: 'Ritu Sharma', role: 'manager', email: 'ritu@vendora.local', avatarInitials: 'RS' },
-  { id: 'mem_kabir', name: 'Kabir Khan', role: 'operator', email: 'kabir@vendora.local', avatarInitials: 'KK' },
-];
-
 const OrgAuthContext = createContext<OrgAuthContextType | undefined>(undefined);
 
 export function OrgAuthProvider({ children }: { children: ReactNode }) {
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(() => getCurrentUser());
+
   const [organizations, setOrganizations] = useState<CloudOrganization[]>(() => {
     try {
       const cached = localStorage.getItem('vendora_all_orgs');
-      return cached ? JSON.parse(cached) : DEFAULT_ORGS;
+      return cached ? JSON.parse(cached) : [];
     } catch {
-      return DEFAULT_ORGS;
+      return [];
     }
   });
 
   const [activeOrgId, setActiveOrgId] = useState<string>(() => {
     try {
-      return localStorage.getItem('vendora_active_org_id') || 'org_vendora_main';
+      const user = getCurrentUser();
+      return user?.orgId || localStorage.getItem('vendora_active_org_id') || '';
     } catch {
-      return 'org_vendora_main';
+      return '';
     }
   });
 
   const [members, setMembers] = useState<OrgMemberProfile[]>(() => {
     try {
-      const cached = localStorage.getItem(`vendora_org_members_${activeOrgId}`);
-      return cached ? JSON.parse(cached) : DEFAULT_MEMBERS;
+      if (!activeOrgId) return [];
+      const cached = localStorage.getItem(endora_org_members_);
+      return cached ? JSON.parse(cached) : [];
     } catch {
-      return DEFAULT_MEMBERS;
+      return [];
     }
   });
 
   const [currentMemberId, setCurrentMemberId] = useState<string>(() => {
     try {
-      return localStorage.getItem(`vendora_active_member_${activeOrgId}`) || (members[0]?.id || 'mem_om');
+      if (!activeOrgId) return '';
+      return localStorage.getItem(endora_active_member_) || '';
     } catch {
-      return 'mem_om';
+      return '';
     }
   });
 
-  // Supabase Auth State
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(new Date());
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
 
-  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
-  const [pendingSyncCount, setPendingSyncCount] = useState<number>(0);
-  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(new Date());
-
-  const organization = organizations.find((o) => o.id === activeOrgId) || organizations[0];
-  const currentMember = members.find((m) => m.id === currentMemberId) || members[0] || {
-    id: 'mem_om',
-    name: 'Om Shetkar',
-    role: 'owner',
-    avatarInitials: 'OS',
-  };
-
-  // Role permissions
-  const canManageSettings = currentMember.role === 'owner';
-  const canApproveOrders = currentMember.role === 'owner' || currentMember.role === 'manager';
-  const canDeleteRecords = currentMember.role === 'owner';
-  const canIntakeOrders = true;
-
-  // Listen for Supabase Auth state changes
+  // Keep currentUser in sync if changed
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-    });
+    const handleStorage = () => {
+      const updatedUser = getCurrentUser();
+      setCurrentUser(updatedUser);
+      if (updatedUser && updatedUser.orgId !== activeOrgId) {
+        setActiveOrgId(updatedUser.orgId);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [activeOrgId]);
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Track online/offline status
+  // Network listeners
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
-  // Fetch all organizations from Supabase
+  // Sync organizations from Supabase Cloud if online
   useEffect(() => {
-    async function loadCloudOrgs() {
+    if (!isOnline || !activeOrgId) return;
+
+    async function loadCloudOrg() {
       try {
-        const { data, error } = await supabase.from('organizations').select('*');
+        const { data, error } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('id', activeOrgId)
+          .limit(1);
+
         if (!error && data && data.length > 0) {
-          setOrganizations(data);
-          localStorage.setItem('vendora_all_orgs', JSON.stringify(data));
+          const org = data[0];
+          setOrganizations((prev) => {
+            const exists = prev.find((o) => o.id === org.id);
+            const updated = exists ? prev.map((o) => (o.id === org.id ? org : o)) : [...prev, org];
+            try {
+              localStorage.setItem('vendora_all_orgs', JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
         }
       } catch (err) {
-        console.warn('Failed to load cloud orgs:', err);
+        console.warn('Could not pull cloud organization:', err);
       }
     }
-    if (isOnline) {
-      loadCloudOrgs();
-    }
-  }, [isOnline]);
 
-  // Load members for current organization from Supabase
+    loadCloudOrg();
+  }, [isOnline, activeOrgId]);
+
+  // Load organization members
   useEffect(() => {
+    if (!activeOrgId) return;
+
     async function loadOrgMembers() {
       try {
         const { data, error } = await supabase
@@ -183,21 +167,28 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
           .eq('org_id', activeOrgId);
 
         if (!error && data && data.length > 0) {
-          const mapped: OrgMemberProfile[] = data.map((d: any) => ({
-            id: d.id,
-            name: d.member_name,
-            role: d.role as UserRole,
-            email: d.email,
-            avatarInitials: d.avatar_initials || d.member_name.slice(0, 2).toUpperCase(),
+          const mapped: OrgMemberProfile[] = data.map((m: any) => ({
+            id: m.id,
+            name: m.member_name,
+            role: m.role as UserRole,
+            email: m.email,
+            avatarInitials: m.avatar_initials || m.member_name.slice(0, 2).toUpperCase(),
           }));
+
           setMembers(mapped);
-          localStorage.setItem(`vendora_org_members_${activeOrgId}`, JSON.stringify(mapped));
-          if (!mapped.some((m) => m.id === currentMemberId)) {
+          try {
+            localStorage.setItem(endora_org_members_, JSON.stringify(mapped));
+          } catch {}
+
+          if (!currentMemberId || !mapped.some((m) => m.id === currentMemberId)) {
             setCurrentMemberId(mapped[0].id);
+            try {
+              localStorage.setItem(endora_active_member_, mapped[0].id);
+            } catch {}
           }
         }
       } catch (err) {
-        console.warn('Failed to load cloud members:', err);
+        console.warn('Could not pull members:', err);
       }
     }
 
@@ -206,120 +197,38 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isOnline, activeOrgId]);
 
-  // Auth: Log in with email & password across devices
-  const loginWithEmail = async (email: string, password: string) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+  const organization = organizations.find((o) => o.id === activeOrgId) || (currentUser ? {
+    id: currentUser.orgId,
+    name: 'My Store',
+    slug: 'my-store',
+    capacity: 15,
+    currency: 'INR'
+  } : null);
 
-      if (error) {
-        return { ok: false, error: error.message };
-      }
+  const currentMember = members.find((m) => m.id === currentMemberId) || (currentUser ? {
+    id: currentUser.id,
+    name: currentUser.fullName,
+    role: currentUser.role,
+    avatarInitials: currentUser.fullName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'OW',
+    email: `${currentUser.username}@vendora.store`
+  } : null);
 
-      setSession(data.session);
-      setUser(data.user);
+  // Role permissions
+  const role = currentMember?.role || currentUser?.role || 'owner';
+  const canManageSettings = role === 'owner';
+  const canApproveOrders = role === 'owner' || role === 'manager';
+  const canDeleteRecords = role === 'owner';
+  const canIntakeOrders = true;
 
-      // Check if user has an associated organization or member profile
-      const { data: memberData } = await supabase
-        .from('organization_members')
-        .select('*, organizations(*)')
-        .eq('email', email.trim());
-
-      if (memberData && memberData.length > 0) {
-        const primary = memberData[0];
-        setActiveOrgId(primary.org_id);
-        setCurrentMemberId(primary.id);
-        try {
-          localStorage.setItem('vendora_active_org_id', primary.org_id);
-          localStorage.setItem(`vendora_active_member_${primary.org_id}`, primary.id);
-        } catch {}
-      }
-
-      window.location.reload();
-      return { ok: true };
-    } catch (err: any) {
-      return { ok: false, error: err?.message || 'Login failed' };
-    }
-  };
-
-  // Auth: Sign up with email & create organization
-  const signUpWithEmail = async (email: string, password: string, fullName: string, storeName: string) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: { full_name: fullName.trim(), store_name: storeName.trim() },
-        },
-      });
-
-      if (error) {
-        return { ok: false, error: error.message };
-      }
-
-      // Create new organization for this user
-      await createOrganization(storeName, fullName);
-      return { ok: true };
-    } catch (err: any) {
-      return { ok: false, error: err?.message || 'Sign up failed' };
-    }
-  };
-
-  // Auth: Instant multi-device sync via Store Code / Slug
-  const loginWithStoreCode = async (code: string, memberName?: string) => {
-    const cleanCode = code.trim().toLowerCase();
-    try {
-      // Find organization by ID or slug
-      const { data: orgData, error: orgErr } = await supabase
-        .from('organizations')
-        .select('*')
-        .or(`id.eq.${code.trim()},slug.eq.${cleanCode}`)
-        .limit(1);
-
-      if (orgErr || !orgData || orgData.length === 0) {
-        return { ok: false, error: 'Store not found with that Store ID or Slug' };
-      }
-
-      const foundOrg = orgData[0];
-      setActiveOrgId(foundOrg.id);
-      try {
-        localStorage.setItem('vendora_active_org_id', foundOrg.id);
-      } catch {}
-
-      // Fetch members of that org
-      const { data: memberData } = await supabase
-        .from('organization_members')
-        .select('*')
-        .eq('org_id', foundOrg.id);
-
-      if (memberData && memberData.length > 0) {
-        let match = memberData[0];
-        if (memberName) {
-          const found = memberData.find((m: any) => m.member_name.toLowerCase().includes(memberName.toLowerCase()));
-          if (found) match = found;
-        }
-        setCurrentMemberId(match.id);
-        try {
-          localStorage.setItem(`vendora_active_member_${foundOrg.id}`, match.id);
-        } catch {}
-      }
-
-      window.location.reload();
-      return { ok: true };
-    } catch (err: any) {
-      return { ok: false, error: err?.message || 'Store connection failed' };
-    }
-  };
-
-  const logout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
+  const logout = () => {
+    logoutUser();
+    setCurrentUser(null);
+    setActiveOrgId('');
+    setMembers([]);
+    setCurrentMemberId('');
     try {
       localStorage.removeItem('vendora_active_org_id');
-      localStorage.removeItem('vendora_active_member_id');
+      localStorage.removeItem('vendora_current_user');
     } catch {}
     window.location.reload();
   };
@@ -334,19 +243,19 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
 
   const createOrganization = async (orgName: string, ownerName: string) => {
     const slug = orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'store';
-    const newOrgId = `org_${Date.now().toString(36)}`;
+    const newOrgId = org_;
 
     const newOrg: CloudOrganization = {
       id: newOrgId,
       name: orgName.trim(),
-      slug: `${slug}-${Math.random().toString(36).slice(2, 5)}`,
+      slug: slug + "-" + Math.random().toString(36).slice(2, 5),
       capacity: 15,
       currency: 'INR',
     };
 
     const ownerInitials = ownerName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || 'OW';
     const ownerMember: OrgMemberProfile = {
-      id: `mem_${Date.now().toString(36)}`,
+      id: mem_,
       name: ownerName.trim(),
       role: 'owner',
       avatarInitials: ownerInitials,
@@ -354,10 +263,14 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
 
     const updatedOrgs = [...organizations, newOrg];
     setOrganizations(updatedOrgs);
+    setActiveOrgId(newOrgId);
+    setMembers([ownerMember]);
+    setCurrentMemberId(ownerMember.id);
+
     try {
       localStorage.setItem('vendora_all_orgs', JSON.stringify(updatedOrgs));
-      localStorage.setItem(`vendora_org_members_${newOrgId}`, JSON.stringify([ownerMember]));
-      localStorage.setItem(`vendora_active_member_${newOrgId}`, ownerMember.id);
+      localStorage.setItem(endora_org_members_, JSON.stringify([ownerMember]));
+      localStorage.setItem(endora_active_member_, ownerMember.id);
       localStorage.setItem('vendora_active_org_id', newOrgId);
     } catch {}
 
@@ -382,14 +295,12 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
         console.warn('Failed to push new org to cloud:', err);
       }
     }
-
-    window.location.reload();
   };
 
   const switchMember = (memberId: string) => {
     setCurrentMemberId(memberId);
     try {
-      localStorage.setItem(`vendora_active_member_${activeOrgId}`, memberId);
+      localStorage.setItem(endora_active_member_, memberId);
     } catch {}
   };
 
@@ -402,7 +313,7 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
       .toUpperCase() || 'OP';
 
     const newMember: OrgMemberProfile = {
-      id: `mem_${Date.now().toString(36)}`,
+      id: mem_,
       name,
       role,
       email,
@@ -412,7 +323,7 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
     const updated = [...members, newMember];
     setMembers(updated);
     try {
-      localStorage.setItem(`vendora_org_members_${activeOrgId}`, JSON.stringify(updated));
+      localStorage.setItem(endora_org_members_, JSON.stringify(updated));
     } catch {}
 
     if (isOnline) {
@@ -438,6 +349,9 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
   return (
     <OrgAuthContext.Provider
       value={{
+        currentUser,
+        isAuthenticated: !!currentUser,
+        logout,
         organization,
         organizations,
         switchOrganization,
@@ -448,10 +362,6 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
         addMember,
         user,
         session,
-        loginWithEmail,
-        signUpWithEmail,
-        loginWithStoreCode,
-        logout,
         canManageSettings,
         canApproveOrders,
         canDeleteRecords,

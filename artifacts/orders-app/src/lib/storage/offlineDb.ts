@@ -261,14 +261,14 @@ export class OfflineStorage {
     }
 
     const defaultSettings: Settings = {
-      operatorName: 'Om Shetkar',
-      businessType: 'Custom Tailoring & Studio',
+      operatorName: 'Store Owner',
+      businessType: 'Store Ledger',
       capacity: 15,
       deviceId,
       theme: 'dark',
     };
 
-    let orders = lsData.orders && lsData.orders.length > 0 ? lsData.orders : getInitialSeedOrders(deviceId);
+    let orders = lsData.orders && lsData.orders.length > 0 ? lsData.orders : [];
     let settings = savedSettings || lsData.settings || defaultSettings;
     let oplog = lsData.oplog || [];
     let conflicts = lsData.conflicts || [];
@@ -290,7 +290,8 @@ export class OfflineStorage {
         // Seed IndexedDB
         const tx = db.transaction(STORE_ORDERS, 'readwrite');
         const store = tx.objectStore(STORE_ORDERS);
-        orders.forEach((o) => store.put(o));
+        // clean empty ledger by default
+          if (orders.length > 0) orders.forEach((o) => store.put(o));
       }
 
       const idbSettings = await new Promise<Settings | null>((res) => {
@@ -305,7 +306,7 @@ export class OfflineStorage {
         }
       });
       if (idbSettings && idbSettings.operatorName) {
-        if (idbSettings.operatorName === 'Meera') idbSettings.operatorName = 'Om Shetkar';
+        
         settings = { ...defaultSettings, ...idbSettings };
       }
     } catch (err) {
@@ -350,7 +351,7 @@ export class OfflineStorage {
         }
       }
     } catch {}
-    this.cachedOrders = getInitialSeedOrders(deviceId);
+    this.cachedOrders = [];
     return this.cachedOrders;
   }
 
@@ -438,6 +439,23 @@ export class OfflineStorage {
       c.resolved = true;
       c.resolution = resolution;
       this.saveBackupLocally();
+    }
+  }
+
+    static async clearAllData(): Promise<void> {
+    this.cachedOrders = [];
+    this.cachedOplog = [];
+    this.cachedConflicts = [];
+    try {
+      localStorage.removeItem(LS_BACKUP_KEY);
+      localStorage.removeItem('vendora_settings');
+      const db = await openIndexedDB();
+      const tx = db.transaction([STORE_ORDERS, STORE_OPLOG, STORE_CONFLICTS], 'readwrite');
+      tx.objectStore(STORE_ORDERS).clear();
+      tx.objectStore(STORE_OPLOG).clear();
+      tx.objectStore(STORE_CONFLICTS).clear();
+    } catch (err) {
+      console.warn('Clear data error:', err);
     }
   }
 
