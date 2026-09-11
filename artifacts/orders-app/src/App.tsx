@@ -1808,6 +1808,7 @@ function SettingsPage({
 }
 
 function App() {
+  const { organization, currentMember } = useOrgAuth();
   const [loaded, setLoaded] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [settings, setSettings] = useState<Settings>({
@@ -1910,7 +1911,7 @@ function App() {
     // Cloud sync to Supabase
     enqueueMutation('upsert', nextOrder.id, nextOrder);
     if (navigator.onLine) {
-      flushPendingMutations('org_vendora_main').then((count) => {
+      flushPendingMutations(organization.id).then((count) => {
         if (count > 0) notify('Backed up to Supabase Cloud');
       });
     }
@@ -1926,7 +1927,7 @@ function App() {
     // Cloud delete from Supabase
     enqueueMutation('delete', orderId);
     if (navigator.onLine) {
-      flushPendingMutations('org_vendora_main');
+      flushPendingMutations(organization.id);
     }
   };
 
