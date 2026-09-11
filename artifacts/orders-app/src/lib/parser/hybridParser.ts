@@ -123,8 +123,8 @@ export function saveProviderKey(provider: LLMProvider, key: string): void {
 }
 
 export function getActiveModelId(): string {
-  if (typeof window === 'undefined') return 'gemini-3.6-flash';
-  return localStorage.getItem('vendora_active_model') || 'gemini-3.6-flash';
+  if (typeof window === 'undefined') return 'offline-engine';
+  return localStorage.getItem('vendora_active_model') || 'offline-engine';
 }
 
 export function setActiveModelId(modelId: string): void {

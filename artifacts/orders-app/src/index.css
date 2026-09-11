@@ -1377,3 +1377,22 @@ h3 { font-size: 15px; color: #fff; }
   border-color: var(--day-accent);
   color: #fff;
 }
+
+/* Responsive Topbar Logout Button */
+.logout-btn-topbar {
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .logout-btn-topbar span {
+    display: none !important;
+  }
+  .logout-btn-topbar {
+    padding: 6px 8px !important;
+  }
+  .crumb {
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

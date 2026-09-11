@@ -154,6 +154,7 @@ export async function registerUser({
       localStorage.setItem('vendora_active_org_id', orgId);
       localStorage.setItem('vendora_active_member_' + orgId, memberId);
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
+      localStorage.setItem('vendora_onboarded', 'true');
     } catch (err) {
       console.warn('LocalStorage error during register:', err);
     }
@@ -259,6 +260,7 @@ export async function loginUser({
 
     try {
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(matchedUser));
+      localStorage.setItem('vendora_onboarded', 'true');
       localStorage.setItem('vendora_active_org_id', matchedUser.orgId);
     } catch {}
 

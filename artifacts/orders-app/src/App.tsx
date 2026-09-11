@@ -334,6 +334,32 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
                 </div>
               </Link>
 
+              {/* Mobile Drawer Direct Sign Out */}
+              <div style={{ padding: '0 0 14px' }}>
+                <button
+                  type="button"
+                  onClick={() => { setDrawerOpen(false); logout(); }}
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                    borderRadius: '10px',
+                    color: '#ef4444',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <LogOut size={16} />
+                  <span>Sign Out (@{currentUser?.username || 'user'})</span>
+                </button>
+              </div>
+
               <div className="nav-label">Core Desk</div>
               <nav className="nav">
                 {links.map(({ href, label, icon: Icon }) => (
@@ -1854,6 +1880,32 @@ function SettingsPage({
             </button>
           </div>
         </section>
+
+        <section className="setting-card" style={{ border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.04)' }}>
+          <h3 style={{ color: '#ef4444' }}>Account & Session</h3>
+          <p className="setting-desc">Manage your active store credentials and device authentication.</p>
+          <div className="setting-row">
+            <span>
+              <strong>Current User</strong><br />
+              <small className="cell-muted">Signed in as <strong>@{currentUser?.username || 'user'}</strong> ({currentUser?.fullName || 'Owner'})</small>
+            </span>
+            <button
+              className="btn btn-danger"
+              onClick={() => logout()}
+              style={{
+                background: '#ef4444',
+                color: '#fff',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontWeight: 700,
+                padding: '8px 16px',
+              }}
+            >
+              <LogOut size={16} /> Sign Out
+            </button>
+          </div>
+        </section>
       </div>
     </div>
   );
@@ -1886,7 +1938,8 @@ function App() {
       setLoaded(true);
 
       const onboarded = localStorage.getItem('vendora_onboarded');
-      if (!onboarded) {
+      const userCached = localStorage.getItem('vendora_current_user');
+      if (!onboarded && !userCached) {
         setShowOnboarding(true);
       }
     });
