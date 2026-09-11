@@ -177,6 +177,31 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
             <small className="operator-domain">{organization?.name || "Store Ledger"}</small>
           </div>
         </Link>
+        <div style={{ padding: '0 12px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+            User: <strong style={{ color: '#38bdf8' }}>@{currentUser?.username || 'user'}</strong>
+          </span>
+          <button
+            onClick={() => logout()}
+            style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              color: '#ef4444',
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '3px 7px',
+              borderRadius: '6px',
+            }}
+            title="Sign Out"
+          >
+            <LogOut size={11} />
+            <span>Sign Out</span>
+          </button>
+        </div>
 
         <div className="nav-label">Core Desk</div>
         <nav className="nav">
@@ -238,6 +263,29 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
             <Link href="/settings" className="icon-btn" data-testid="link-settings" title="Settings">
               <SettingsIcon />
             </Link>
+            <button
+              className="logout-btn-topbar"
+              onClick={() => logout()}
+              title="Sign Out / Switch Account"
+              aria-label="Sign Out"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                color: '#ef4444',
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: '8px',
+                padding: '5px 11px',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <LogOut size={14} />
+              <span>Sign Out</span>
+            </button>
           </div>
         </header>
 

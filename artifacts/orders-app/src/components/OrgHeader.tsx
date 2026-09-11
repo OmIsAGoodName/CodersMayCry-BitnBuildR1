@@ -2,7 +2,7 @@ import { AuthModal } from '@/components/AuthModal';
 import { Laptop } from 'lucide-react';
 import React, { useState } from 'react';
 import { useOrgAuth, UserRole } from '@/context/OrgAuthContext';
-import { ShieldCheck, ShieldAlert, UserCheck, Cloud, CloudOff, RefreshCw, ChevronDown, Check, Building2, Plus, X } from 'lucide-react';
+import { LogOut, ShieldCheck, ShieldAlert, UserCheck, Cloud, CloudOff, RefreshCw, ChevronDown, Check, Building2, Plus, X } from 'lucide-react';
 
 export function OrgHeader() {
   const {
@@ -15,7 +15,8 @@ export function OrgHeader() {
     switchMember,
     isOnline,
     pendingSyncCount,
-    syncNow
+    syncNow,
+    logout
   } = useOrgAuth();
 
   const [memberDropdownOpen, setMemberDropdownOpen] = useState(false);
@@ -160,6 +161,21 @@ export function OrgHeader() {
               <span>Backup Now</span>
             </button>
           )}
+          <button
+            type="button"
+            className="sync-trigger-btn"
+            onClick={() => logout()}
+            title="Sign out of current store and user"
+            style={{
+              borderColor: 'rgba(239, 68, 68, 0.35)',
+              color: '#ef4444',
+              background: 'rgba(239, 68, 68, 0.08)',
+              cursor: 'pointer',
+            }}
+          >
+            <LogOut size={12} />
+            <span>Sign Out</span>
+          </button>
         </div>
       </div>
 
