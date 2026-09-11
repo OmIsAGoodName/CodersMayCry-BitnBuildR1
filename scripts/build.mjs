@@ -40,7 +40,10 @@ if (!built) {
 }
 
 // Synchronize build output to public, dist, and current working directory
-const srcDist = path.join(repoRoot, 'artifacts/orders-app/dist/public');
+let srcDist = path.join(repoRoot, 'artifacts/orders-app/dist');
+if (!fs.existsSync(srcDist) || !fs.existsSync(path.join(srcDist, 'index.html'))) {
+  srcDist = path.join(repoRoot, 'artifacts/orders-app/dist/public');
+}
 const targets = new Set([
   path.join(repoRoot, 'public'),
   path.join(repoRoot, 'dist'),
@@ -52,7 +55,9 @@ const targets = new Set([
 
 if (fs.existsSync(srcDist)) {
   for (const t of targets) {
-    fs.cpSync(srcDist, t, { recursive: true });
+    if (path.resolve(t) !== path.resolve(srcDist)) {
+      fs.cpSync(srcDist, t, { recursive: true });
+    }
   }
   console.log('✅ Synchronized build artifacts to all target public and dist directories');
 } else {
