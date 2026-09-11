@@ -3,7 +3,7 @@ import {
   Search, Mic, MicOff, AlertCircle, Clock, CheckCircle2, IndianRupee,
   Layers, User, ChevronRight, Sparkles, MessageCircle, Phone, ArrowUpRight
 } from 'lucide-react';
-import { Order, Settings } from '../storage/offlineDb';
+import { Order, Settings } from '@/lib/storage/offlineDb';
 
 interface QueryDeskProps {
   orders: Order[];
