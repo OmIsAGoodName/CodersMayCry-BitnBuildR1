@@ -26,6 +26,7 @@ import { QueryDesk } from '@/components/QueryDesk';
 import { StructuredJsonPage } from '@/pages/StructuredJsonPage';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { DayTracker, applyDayTheme } from '@/components/DayTracker';
+import { BrandLogo } from '@/components/BrandLogo';
 import { runScenario1, runScenario2, runScenario3, ScenarioTestResult } from '@/lib/sync/conflictScenarios';
 
 const queryClient = new QueryClient();
@@ -77,17 +78,52 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
     }
   });
 
-  const toggleTheme = () => {
-    const next = themeMode === 'dark' ? 'light' : 'dark';
-    setThemeMode(next);
-    try {
-      localStorage.setItem('vendora_theme_mode', next);
-    } catch {}
-    document.documentElement.setAttribute('data-theme', next);
-    if (next === 'light') {
-      document.body.classList.add('theme-light');
+  const toggleTheme = (e?: React.MouseEvent) => {
+    const x = e ? e.clientX : window.innerWidth - 60;
+    const y = e ? e.clientY : 30;
+    const endRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    const applyThemeUpdate = () => {
+      const next = themeMode === 'dark' ? 'light' : 'dark';
+      setThemeMode(next);
+      try {
+        localStorage.setItem('vendora_theme_mode', next);
+      } catch {}
+      document.documentElement.setAttribute('data-theme', next);
+      if (next === 'light') {
+        document.body.classList.add('theme-light');
+      } else {
+        document.body.classList.remove('theme-light');
+      }
+    };
+
+    // Expanding circular ripple using View Transitions API
+    if (typeof document !== 'undefined' && 'startViewTransition' in document) {
+      const transition = (document as any).startViewTransition(() => {
+        applyThemeUpdate();
+      });
+
+      transition.ready.then(() => {
+        const clipPath = [
+          `circle(0px at ${x}px ${y}px)`,
+          `circle(${endRadius}px at ${x}px ${y}px)`
+        ];
+        document.documentElement.animate(
+          {
+            clipPath: clipPath
+          },
+          {
+            duration: 520,
+            easing: 'cubic-bezier(0.2, 0, 0, 1)',
+            pseudoElement: '::view-transition-new(root)'
+          }
+        );
+      });
     } else {
-      document.body.classList.remove('theme-light');
+      applyThemeUpdate();
     }
   };
 
@@ -115,7 +151,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
       {/* Desktop Persistent Sidebar */}
       <aside className="sidebar">
         <Link href="/" className="brand" data-testid="link-brand">
-          <span className="brand-mark">V</span>
+          <BrandLogo />
           <span>
             <span className="brand-name">Vendora</span>
             <span className="brand-sub">Sovereign Offline Orders</span>
@@ -184,7 +220,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
             </div>
             <button
               className="icon-btn"
-              onClick={toggleTheme}
+              onClick={(e) => toggleTheme(e)}
               title={themeMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               aria-label="Toggle Light/Dark Theme"
               data-testid="button-theme-toggle"
@@ -203,7 +239,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
             <div className="mobile-drawer-content" onClick={(e) => e.stopPropagation()}>
               <div className="mobile-drawer-header">
                 <Link href="/" className="brand" style={{ padding: 0 }} onClick={() => setDrawerOpen(false)}>
-                  <span className="brand-mark">V</span>
+                  <BrandLogo />
                   <div>
                     <span className="brand-name">Vendora</span>
                     <span className="brand-sub">Sovereign Offline Orders</span>
@@ -212,7 +248,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button
                     className="icon-btn"
-                    onClick={toggleTheme}
+                    onClick={(e) => toggleTheme(e)}
                     title={themeMode === 'dark' ? 'Light Mode' : 'Dark Mode'}
                   >
                     {themeMode === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
@@ -567,14 +603,14 @@ function Dashboard({
                   data-testid={`button-recent-order-${o.id}`}
                 >
                   <span className="order-avatar">{initials(o.customer)}</span>
-                  <span>
+                  <div className="order-info">
                     <span className="order-name">{o.customer || 'Unnamed customer'}</span>
                     <span className="order-detail">{itemText(o)} · {money(o.amount)}</span>
-                  </span>
-                  <span className="order-side">
+                  </div>
+                  <div className="order-side">
                     <span className="order-date">{dueLabel(o)}</span>
                     <StatusBadge status={o.status} />
-                  </span>
+                  </div>
                 </button>
               ))
             ) : (
@@ -611,12 +647,20 @@ function Dashboard({
             </div>
           </section>
 
-          <section className="quick-card">
-            <h2>Instant Voice & NL Query Desk</h2>
-            <p>Answer "Who owes money?" or "What is due today?" without scrolling.</p>
-            <Link href="/query" className="btn" data-testid="link-open-query-desk">
-              <Sparkles /> Open Query Desk
-            </Link>
+          <section className="panel quick-card">
+            <div className="panel-head">
+              <div>
+                <h2>Instant Query Desk</h2>
+                <span className="minor">Voice & Natural Language</span>
+              </div>
+              <Sparkles size={16} style={{ color: 'var(--day-accent)' }} />
+            </div>
+            <div className="quick-card-body">
+              <p>Answer "Who owes money?" or "What is due today?" with sub-2ms local lookups.</p>
+              <Link href="/query" className="btn btn-primary" data-testid="link-open-query-desk" style={{ width: 'fit-content' }}>
+                <Sparkles size={14} /> Open Query Desk
+              </Link>
+            </div>
           </section>
         </div>
       </div>

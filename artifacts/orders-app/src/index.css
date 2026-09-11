@@ -120,7 +120,7 @@ body {
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-size: 18px 18px;
   color: #f1f5f9;
   font-family: var(--app-font-sans);
   -webkit-font-smoothing: antialiased;
@@ -435,22 +435,26 @@ h3 { font-size: 15px; color: #fff; }
 .panel-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px 12px; border-bottom: 1px solid #1c2331; }
 .panel-head .minor { font: 10px var(--app-font-mono); color: #64748b; text-transform: uppercase; display: block; margin-top: 2px; }
 .order-list { padding: 4px 8px 8px; }
+/* Order List & Tactile Rows */
+.order-list { padding: 4px 8px 8px; }
 .order-row {
   display: grid;
   grid-template-columns: 38px 1fr auto;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-radius: 8px;
+  border: 0;
+  border-bottom: 1px solid #1c2331;
   text-decoration: none;
   color: inherit;
   width: 100%;
-  border: 0;
   background: transparent;
   text-align: left;
   transition: background 0.12s ease;
 }
 .order-row:hover { background: #18202d; }
+.order-row:last-child { border-bottom: 0; }
 .order-avatar {
   width: 36px;
   height: 36px;
@@ -461,14 +465,53 @@ h3 { font-size: 15px; color: #fff; }
   display: grid;
   place-items: center;
   font: 700 12px var(--app-font-mono);
+  flex-shrink: 0;
 }
-.order-name { font-weight: 700; color: #fff; font-size: 13px; }
-.order-detail { font-size: 12px; color: #94a3b8; margin-top: 2px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.order-side { text-align: right; }
-.order-date { font: 10px var(--app-font-mono); color: #64748b; margin-top: 3px; }
+.order-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.order-name {
+  font-weight: 700;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.order-detail {
+  font-size: 12px;
+  color: #94a3b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.order-side {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.order-date {
+  font: 11px var(--app-font-mono);
+  color: #94a3b8;
+  margin: 0;
+  white-space: nowrap;
+}
 
 /* Status Badges */
-.status { display: inline-flex; align-items: center; border-radius: 4px; padding: 3px 7px; font: 10px var(--app-font-mono); font-weight: 700; text-transform: uppercase; }
+.status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font: 10px var(--app-font-mono);
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
 .status-new { background: #0c4a6e; color: #38bdf8; }
 .status-in_progress { background: #78350f; color: #fbbf24; }
 .status-ready { background: #064e3b; color: #34d399; }
@@ -476,13 +519,90 @@ h3 { font-size: 15px; color: #fff; }
 .status-cancelled { background: #7f1d1d; color: #f87171; }
 
 .side-stack { display: flex; flex-direction: column; gap: 18px; }
-.capacity { padding: 16px 20px; }
-.capacity-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; font-size: 13px; }
-.bar-track { height: 8px; background: #1c2331; border-radius: 4px; overflow: hidden; }
-.bar-fill { height: 100%; border-radius: 4px; background: var(--day-accent); }
 
-.quick-intake { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
-.quick-intake p { font-size: 13px; color: #94a3b8; line-height: 1.5; }
+/* Committed Load Meter & 7-Day Bar Chart */
+.capacity { padding: 18px 20px 14px; }
+.capacity-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+.capacity-number {
+  font-family: var(--app-font-serif);
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+.capacity-unit {
+  font: 10px var(--app-font-mono);
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.meter {
+  height: 8px;
+  background: #1c2331;
+  border-radius: 99px;
+  overflow: hidden;
+}
+.meter span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--day-accent);
+  transition: width 0.3s ease;
+}
+
+.week-bars {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  height: 90px;
+  padding: 12px 20px 16px;
+  align-items: end;
+  border-top: 1px solid #1c2331;
+  margin-top: 4px;
+}
+.bar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  justify-content: flex-end;
+}
+.bar {
+  width: 100%;
+  max-width: 18px;
+  background: #232c3d;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease;
+  min-height: 4px;
+}
+.bar.today {
+  background: var(--day-accent);
+}
+.bar-label {
+  font: 10px var(--app-font-mono);
+  color: #64748b;
+  font-weight: 700;
+}
+
+/* Quick Card */
+.quick-card-body {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.quick-card-body p {
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0;
+}
 
 /* Solid Form Inputs */
 .input {
@@ -711,3 +831,135 @@ h3 { font-size: 15px; color: #fff; }
 }
 
 @import './light-theme.css';
+
+
+/* Circular Ripple View Transitions */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none !important;
+  mix-blend-mode: normal !important;
+}
+::view-transition-old(root) {
+  z-index: 1 !important;
+}
+::view-transition-new(root) {
+  z-index: 999999 !important;
+}
+
+/* ==========================================================================
+   Miles Morales Spider-Verse Multiverse Glitch Effect (Logo Only)
+   ========================================================================== */
+
+.brand-logo-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+/* Fast snappy 0.28s jitter on hover, 0.42s on periodic */
+.brand-logo-wrap.is-glitching.mode-hover .brand-mark {
+  animation: miles-jitter 0.28s steps(2, end) infinite;
+  filter: contrast(1.35) saturate(1.4);
+}
+.brand-logo-wrap.is-glitching.mode-periodic .brand-mark {
+  animation: miles-jitter 0.42s steps(2, end) infinite;
+  filter: contrast(1.35) saturate(1.4);
+}
+
+.brand-logo-wrap .glitch-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+  pointer-events: none;
+  opacity: 0;
+  display: none;
+}
+
+/* Red / Magenta Multiverse Channel Split */
+.brand-logo-wrap.is-glitching .glitch-layer.layer-red {
+  display: block;
+  opacity: 0.9;
+  mix-blend-mode: screen;
+  filter: drop-shadow(-3px 0 3px #ff0055) hue-rotate(-20deg);
+}
+.brand-logo-wrap.is-glitching.mode-hover .glitch-layer.layer-red {
+  animation: miles-red-slice 0.28s steps(1) infinite;
+}
+.brand-logo-wrap.is-glitching.mode-periodic .glitch-layer.layer-red {
+  animation: miles-red-slice 0.42s steps(1) infinite;
+}
+
+/* Electric Cyan / Blue Multiverse Channel Split */
+.brand-logo-wrap.is-glitching .glitch-layer.layer-cyan {
+  display: block;
+  opacity: 0.9;
+  mix-blend-mode: screen;
+  filter: drop-shadow(3px 0 3px #00f0ff) hue-rotate(180deg);
+}
+.brand-logo-wrap.is-glitching.mode-hover .glitch-layer.layer-cyan {
+  animation: miles-cyan-slice 0.28s steps(1) infinite;
+}
+.brand-logo-wrap.is-glitching.mode-periodic .glitch-layer.layer-cyan {
+  animation: miles-cyan-slice 0.42s steps(1) infinite;
+}
+
+/* Spider-Verse Slice Line Displacement */
+.brand-logo-wrap .glitch-slice {
+  display: none;
+}
+.brand-logo-wrap.is-glitching .glitch-slice {
+  display: block;
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  height: 5px;
+  background: rgba(255, 0, 85, 0.5);
+  box-shadow: 0 0 6px #00f0ff;
+  mix-blend-mode: color-dodge;
+  pointer-events: none;
+}
+.brand-logo-wrap.is-glitching.mode-hover .glitch-slice {
+  animation: miles-slice-jump 0.28s steps(2) infinite;
+}
+.brand-logo-wrap.is-glitching.mode-periodic .glitch-slice {
+  animation: miles-slice-jump 0.42s steps(2) infinite;
+}
+
+@keyframes miles-jitter {
+  0% { transform: translate(0, 0) skewX(0deg); }
+  20% { transform: translate(-3px, 1px) skewX(-6deg); }
+  40% { transform: translate(3px, -2px) skewX(4deg); }
+  60% { transform: translate(-2px, -1px) skewX(-2deg) scale(1.03); }
+  80% { transform: translate(2px, 1px) skewX(4deg); }
+  100% { transform: translate(0, 0) skewX(0deg); }
+}
+
+@keyframes miles-red-slice {
+  0% { transform: translate(-4px, 1px); clip-path: polygon(0 15%, 100% 15%, 100% 45%, 0 45%); }
+  25% { transform: translate(3px, -2px); clip-path: polygon(0 60%, 100% 60%, 100% 85%, 0 85%); }
+  50% { transform: translate(-4px, -1px); clip-path: polygon(0 0%, 100% 0%, 100% 30%, 0 30%); }
+  75% { transform: translate(3px, 1px); clip-path: polygon(0 40%, 100% 40%, 100% 70%, 0 70%); }
+  100% { transform: translate(0, 0); clip-path: none; }
+}
+
+@keyframes miles-cyan-slice {
+  0% { transform: translate(4px, -1px); clip-path: polygon(0 50%, 100% 50%, 100% 75%, 0 75%); }
+  30% { transform: translate(-3px, 2px); clip-path: polygon(0 10%, 100% 10%, 100% 35%, 0 35%); }
+  60% { transform: translate(4px, 1px); clip-path: polygon(0 70%, 100% 70%, 100% 95%, 0 95%); }
+  90% { transform: translate(-3px, -2px); clip-path: polygon(0 25%, 100% 25%, 100% 55%, 0 55%); }
+  100% { transform: translate(0, 0); clip-path: none; }
+}
+
+@keyframes miles-slice-jump {
+  0% { top: 20%; opacity: 0.8; transform: scaleX(1.1); }
+  33% { top: 60%; opacity: 0.6; transform: scaleX(0.9); }
+  66% { top: 35%; opacity: 0.9; transform: scaleX(1.1); }
+  100% { top: 10%; opacity: 0; }
+}
