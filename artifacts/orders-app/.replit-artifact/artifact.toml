@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "JanVyapar Orders"
+description = "An offline-first order workspace for single-operator businesses. Parse messy customer messages into structured jobs, track due dates and payments, and surface sync conflicts without losing work."
+version = "1.0.0"
+id = "artifacts/orders-app"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21495
+
+[services.development]
+run = "pnpm --filter @workspace/orders-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/orders-app", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/orders-app/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21495"
+BASE_PATH = "/"

@@ -1,0 +1,31 @@
+{
+  "name": "janvyapar-offline-orders",
+  "version": "1.0.0",
+  "description": "Sovereign Offline-First Order Intake & Management System with Hybrid Universal NLP and CRDT Sync",
+  "license": "MIT",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @workspace/orders-app run dev",
+    "build": "node scripts/build.mjs",
+    "vercel-build": "node scripts/build.mjs",
+    "test": "node scripts/test-all.mjs",
+    "parse:batch": "node scripts/parse-batch.mjs",
+    "typecheck:libs": "tsc --build",
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+  },
+  "private": true,
+  "dependencies": {
+    "@replit/connectors-sdk": "^0.4.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
+    "prettier": "^3.9.6",
+    "tailwindcss": "^4.1.14",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.2"
+  }
+}

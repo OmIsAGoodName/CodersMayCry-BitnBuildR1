@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  janvyapar-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: janvyapar-offline-orders
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=production
+      - PORT=5173
+    restart: unless-stopped
