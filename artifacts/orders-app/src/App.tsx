@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useState, useTransition } from 'react';
 import { Link, Route, Switch, useLocation } from 'wouter';
 import {
-  AlertTriangle, ArrowRight, BarChart3, CalendarDays, Check, CheckCircle2, ClipboardList,
+  Sun, Moon, AlertTriangle, ArrowRight, BarChart3, CalendarDays, Check, CheckCircle2, ClipboardList,
   CloudOff, CloudUpload, Database, Download, FileJson, Filter, Home, Inbox, IndianRupee,
   Layers3, MoreHorizontal, Plus, RefreshCw, RotateCcw, Search, Settings as SettingsIcon,
   Sparkles, Trash2, Upload, Wifi, WifiOff, X, Zap, Cpu, Play, Key, SlidersHorizontal, Copy, User,
@@ -68,6 +68,37 @@ function maskKey(key: string): string {
 function AppShell({ children, settings, online, pendingSyncCount }: { children: ReactNode; settings: Settings; online: boolean; pendingSyncCount: number }) {
   const [location] = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
+    try {
+      return (localStorage.getItem('vendora_theme_mode') as 'dark' | 'light') || 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  const toggleTheme = () => {
+    const next = themeMode === 'dark' ? 'light' : 'dark';
+    setThemeMode(next);
+    try {
+      localStorage.setItem('vendora_theme_mode', next);
+    } catch {}
+    document.documentElement.setAttribute('data-theme', next);
+    if (next === 'light') {
+      document.body.classList.add('theme-light');
+    } else {
+      document.body.classList.remove('theme-light');
+    }
+  };
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', themeMode);
+    if (themeMode === 'light') {
+      document.body.classList.add('theme-light');
+    } else {
+      document.body.classList.remove('theme-light');
+    }
+  }, [themeMode]);
 
   const links = [
     { href: '/', label: 'Workbench', icon: Home },
@@ -151,6 +182,15 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
               <span className={`offline-dot ${online ? 'online' : ''}`} />
               <span className="offline-pill-text">{online ? 'Online' : 'Offline'}</span>
             </div>
+            <button
+              className="icon-btn"
+              onClick={toggleTheme}
+              title={themeMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              aria-label="Toggle Light/Dark Theme"
+              data-testid="button-theme-toggle"
+            >
+              {themeMode === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
             <Link href="/settings" className="icon-btn" data-testid="link-settings" title="Settings">
               <SettingsIcon />
             </Link>
@@ -169,9 +209,18 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
                     <span className="brand-sub">Sovereign Offline Orders</span>
                   </div>
                 </Link>
-                <button className="icon-btn" onClick={() => setDrawerOpen(false)} title="Close menu">
-                  <X size={18} />
-                </button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    className="icon-btn"
+                    onClick={toggleTheme}
+                    title={themeMode === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                  >
+                    {themeMode === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                  </button>
+                  <button className="icon-btn" onClick={() => setDrawerOpen(false)} title="Close menu">
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
 
               <Link
