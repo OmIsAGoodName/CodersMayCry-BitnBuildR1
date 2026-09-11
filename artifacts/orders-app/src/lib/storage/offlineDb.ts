@@ -261,7 +261,7 @@ export class OfflineStorage {
     }
 
     const defaultSettings: Settings = {
-      operatorName: 'Meera',
+      operatorName: 'Om Shetkar',
       businessType: 'Custom Tailoring & Studio',
       capacity: 15,
       deviceId,
@@ -305,6 +305,7 @@ export class OfflineStorage {
         }
       });
       if (idbSettings && idbSettings.operatorName) {
+        if (idbSettings.operatorName === 'Meera') idbSettings.operatorName = 'Om Shetkar';
         settings = { ...defaultSettings, ...idbSettings };
       }
     } catch (err) {
@@ -444,7 +445,7 @@ export class OfflineStorage {
     const deviceId = getOrCreateDeviceId();
     const orders = getInitialSeedOrders(deviceId);
     const settings: Settings = {
-      operatorName: 'Meera',
+      operatorName: 'Om Shetkar',
       businessType: 'Custom Tailoring & Studio',
       capacity: 15,
       deviceId,

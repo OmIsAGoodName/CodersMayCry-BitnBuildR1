@@ -75,6 +75,7 @@ function maskKey(key: string): string {
 function AppShell({ children, settings, online, pendingSyncCount }: { children: ReactNode; settings: Settings; online: boolean; pendingSyncCount: number }) {
   const [location] = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { currentMember, organization } = useOrgAuth();
 
   const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
     try {
@@ -165,14 +166,14 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
         </Link>
 
         {/* Dynamic Operator Profile at Top - Always accessible without scrolling */}
-        <Link href="/settings" className="operator-profile-card" title="Click to view/edit Operator Profile & Settings">
-          <span className="initials">{initials(settings.operatorName)}</span>
+        <Link href="/team" className="operator-profile-card" title="Click to view/manage Team & Roles Hierarchy">
+          <span className="initials">{currentMember.avatarInitials}</span>
           <div className="operator-info">
             <div className="operator-name-row">
-              <strong>{settings.operatorName}</strong>
-              <span className="operator-badge">Active</span>
+              <strong>{currentMember.name}</strong>
+              <span className={`operator-badge badge-${currentMember.role}`}>{currentMember.role.toUpperCase()}</span>
             </div>
-            <small className="operator-domain">{settings.businessType}</small>
+            <small className="operator-domain">{organization.name}</small>
           </div>
         </Link>
 
@@ -552,7 +553,7 @@ function Dashboard({
     <div className="page">
       <Header
         eyebrow={todayLabel}
-        title={`Welcome, ${settings.operatorName}.`}
+        title={`Welcome, ${currentMember ? currentMember.name : settings.operatorName}.`}
         subtitle="Your sovereign offline workbench is fast, resilient, and always in sync."
         action={
           <button className="btn btn-primary" onClick={onNew} data-testid="button-new-order">
@@ -1809,7 +1810,7 @@ function App() {
   const [loaded, setLoaded] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [settings, setSettings] = useState<Settings>({
-    operatorName: 'Meera',
+    operatorName: 'Om Shetkar',
     businessType: 'Custom Tailoring & Studio',
     capacity: 15,
     deviceId: getOrCreateDeviceId(),
