@@ -57,13 +57,18 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
     }
     setLoading(true);
     setError(null);
-    const res = await registerUser({ username, password, fullName, storeName });
-    setLoading(false);
-    if (!res.ok) {
-      setError(res.error || 'Registration failed.');
-      return;
+    try {
+      const res = await registerUser({ username, password, fullName, storeName });
+      if (!res.ok) {
+        setError(res.error || 'Registration failed.');
+        setLoading(false);
+        return;
+      }
+      onSuccess();
+    } catch (err: any) {
+      setError(err?.message || 'An unexpected error occurred during store creation.');
+      setLoading(false);
     }
-    onSuccess();
   };
 
   return (
