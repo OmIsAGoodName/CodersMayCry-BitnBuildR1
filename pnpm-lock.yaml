@@ -342,6 +342,10 @@ importers:
         version: 3.25.76
 
   artifacts/orders-app:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.112.4
+        version: 2.116.0
     devDependencies:
       '@hookform/resolvers':
         specifier: ^3.10.0
