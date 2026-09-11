@@ -240,6 +240,9 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
           </div>
         </header>
 
+        {/* Organization Bar with Store Switcher, Role Hierarchy, and Multi-Device Sync */}
+        <OrgHeader />
+
         {/* Mobile Slide-in Drawer */}
         {drawerOpen && (
           <div className="mobile-drawer-overlay" onClick={() => setDrawerOpen(false)}>
