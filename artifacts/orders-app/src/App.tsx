@@ -199,7 +199,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
             title="Sign Out"
           >
             <LogOut size={11} />
-            <span>Sign Out</span>
+            <span>Log Out</span>
           </button>
         </div>
 
@@ -264,27 +264,29 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
               <SettingsIcon />
             </Link>
             <button
+              id="btn-global-logout"
               className="logout-btn-topbar"
               onClick={() => logout()}
-              title="Sign Out / Switch Account"
-              aria-label="Sign Out"
+              title="Log Out of Account"
+              aria-label="Log Out"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                color: '#ef4444',
-                background: 'rgba(239, 68, 68, 0.12)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#ffffff',
+                background: '#dc2626',
+                border: '1px solid #b91c1c',
                 borderRadius: '8px',
-                padding: '5px 11px',
-                fontSize: '0.8rem',
-                fontWeight: 600,
+                padding: '6px 14px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
                 cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)',
                 transition: 'all 0.2s ease',
               }}
             >
-              <LogOut size={14} />
-              <span>Sign Out</span>
+              <LogOut size={15} />
+              <span>Log Out</span>
             </button>
           </div>
         </header>
@@ -356,7 +358,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
                   }}
                 >
                   <LogOut size={16} />
-                  <span>Sign Out (@{currentUser?.username || 'user'})</span>
+                  <span>Log Out (@{currentUser?.username || 'user'})</span>
                 </button>
               </div>
 
@@ -1937,11 +1939,7 @@ function App() {
       setConflicts(data.conflicts);
       setLoaded(true);
 
-      const onboarded = localStorage.getItem('vendora_onboarded');
-      const userCached = localStorage.getItem('vendora_current_user');
-      if (!onboarded && !userCached) {
-        setShowOnboarding(true);
-      }
+      // Setup wizard never auto-pops up on login
     });
 
     const handleOnline = () => {
@@ -2155,6 +2153,7 @@ function App() {
 
       {showOnboarding && (
         <OnboardingModal
+          onClose={() => setShowOnboarding(false)}
           currentSettings={settings}
           onComplete={(newSettings) => {
             updateSettings(newSettings);

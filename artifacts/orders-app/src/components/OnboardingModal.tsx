@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { Sparkles, Cpu, ShieldCheck, Check, Key, User, Briefcase, Lock } from 'lucide-react';
+import { X, Sparkles, Cpu, ShieldCheck, Check, Key, User, Briefcase, Lock } from 'lucide-react';
 import { LLMProvider, saveProviderKey, setActiveModelId } from '@/lib/parser/hybridParser';
 import { Settings } from '@/lib/storage/offlineDb';
 
 export function OnboardingModal({
   currentSettings,
   onComplete,
+  onClose,
 }: {
   currentSettings: Settings;
   onComplete: (settings: Settings) => void;
+  onClose?: () => void;
 }) {
   const [operatorName, setOperatorName] = useState(currentSettings.operatorName || 'My Workshop');
   const [businessType, setBusinessType] = useState(currentSettings.businessType || 'Custom Tailoring & Studio');
@@ -67,7 +69,29 @@ export function OnboardingModal({
           boxShadow: '0 20px 48px rgba(0, 0, 0, 0.35)',
         }}
       >
-        <div style={{ padding: '28px 28px 20px', borderBottom: '1px solid hsl(var(--border))' }}>
+        <div style={{ padding: '24px 28px 18px', borderBottom: '1px solid hsl(var(--border))', position: 'relative' }}>
+          {onClose && (
+            <button
+              onClick={onClose}
+              style={{
+                position: 'absolute',
+                right: 20,
+                top: 20,
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: 'none',
+                color: '#94a3b8',
+                borderRadius: '8px',
+                padding: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Close Wizard"
+            >
+              <X size={18} />
+            </button>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span
               style={{

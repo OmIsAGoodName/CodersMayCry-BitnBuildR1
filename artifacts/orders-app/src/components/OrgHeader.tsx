@@ -168,13 +168,13 @@ export function OrgHeader() {
             title="Sign out of current store and user"
             style={{
               borderColor: 'rgba(239, 68, 68, 0.35)',
-              color: '#ef4444',
-              background: 'rgba(239, 68, 68, 0.08)',
+              background: '#dc2626',
+              color: '#ffffff',
               cursor: 'pointer',
             }}
           >
             <LogOut size={12} />
-            <span>Sign Out</span>
+            <span>Log Out</span>
           </button>
         </div>
       </div>
