@@ -1,5 +1,5 @@
 /**
- * JanVyapar Sovereign Local-First Database
+ * Vendora Sovereign Local-First Database
  *
  * Guaranteed on-device persistence using IndexedDB with atomic LocalStorage fallback
  * and Write-Ahead Oplog (WAL). Requires zero authentication or network.
@@ -67,15 +67,15 @@ export interface ConflictRecord {
   resolution?: 'local' | 'remote' | 'merge';
 }
 
-const DB_NAME = 'janvyapar_orders_db';
+const DB_NAME = 'vendora_orders_db';
 const DB_VERSION = 1;
 const STORE_ORDERS = 'orders';
 const STORE_SETTINGS = 'settings';
 const STORE_OPLOG = 'oplog';
 const STORE_CONFLICTS = 'conflicts';
 
-const LS_BACKUP_KEY = 'janvyapar-orders-v1';
-const DEVICE_ID_KEY = 'janvyapar_device_id';
+const LS_BACKUP_KEY = 'vendora-orders-v1';
+const DEVICE_ID_KEY = 'vendora_device_id';
 
 export function getOrCreateDeviceId(): string {
   if (typeof window === 'undefined') return 'node-server-01';
@@ -254,7 +254,7 @@ export class OfflineStorage {
     try {
       const raw = localStorage.getItem(LS_BACKUP_KEY);
       if (raw) lsData = JSON.parse(raw);
-      const rawSettings = localStorage.getItem('janvyapar_settings');
+      const rawSettings = localStorage.getItem('vendora_settings');
       if (rawSettings) savedSettings = JSON.parse(rawSettings);
     } catch (e) {
       console.warn('LocalStorage read error:', e);
@@ -411,7 +411,7 @@ export class OfflineStorage {
   static async saveSettings(settings: Settings): Promise<Settings> {
     this.cachedSettings = settings;
     try {
-      localStorage.setItem('janvyapar_settings', JSON.stringify(settings));
+      localStorage.setItem('vendora_settings', JSON.stringify(settings));
     } catch {}
     this.saveBackupLocally();
     try {

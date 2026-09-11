@@ -1,4 +1,4 @@
-# JanVyapar — Sovereign Offline-First Commerce & Order Ledger for Bharat
+# Vendora — Sovereign Offline-First Commerce & Order Ledger for Bharat
 > **Bit N Build Hackathon 2026** · **Track 3: Jan Jeevan (Technology for Everyday Life & Real-World Indian Challenges)**  
 > **Team**: CodersMayCry
 
@@ -13,9 +13,9 @@ Over **63 million micro-enterprises, kirana store owners, mandi traders, and rur
 
 ---
 
-## 💡 The Solution: JanVyapar
+## 💡 The Solution: Vendora
 
-**JanVyapar** is an ultra-fast, offline-first sovereign order intake and ledger platform built specifically for Indian everyday commerce.
+**Vendora** is an ultra-fast, offline-first sovereign order intake and ledger platform built specifically for Indian everyday commerce.
 
 - **100% Offline Universal Parser**: Sub-2ms on-device deterministic NLP parser capable of understanding colloquial order messages, Hinglish terms, Hindi numerals (०-९), colloquial relative dates (*kal sham tak, parso subah*), and multi-item lists without requiring any internet connection.
 - **Sovereign Local-First Database**: Runs directly on browser IndexedDB with an atomic local-storage operation log fallback. Zero sign-up required, zero downtime.

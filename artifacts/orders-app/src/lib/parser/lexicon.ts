@@ -1,5 +1,5 @@
 /**
- * JanVyapar Universal Lexicon
+ * Vendora Universal Lexicon
  * Multi-industry terminology, numbers, transliterations, measurements, and colloquial phrases.
  */
 

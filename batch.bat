@@ -1,7 +1,7 @@
 @echo off
-title JanVyapar Batch Parser (Test A)
+title Vendora Batch Parser (Test A)
 echo ======================================================
-echo    JanVyapar Batch Runner (schema.json contract)
+echo    Vendora Batch Runner (schema.json contract)
 echo ======================================================
 echo.
 if "%~1"=="" (

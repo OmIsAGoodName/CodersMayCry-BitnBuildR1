@@ -37,7 +37,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     {
-      name: 'janvyapar-ai-proxy',
+      name: 'vendora-ai-proxy',
       configureServer(server) {
         server.middlewares.use('/api/ai/parse', async (req, res) => {
           if (req.method !== 'POST') {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * JanVyapar Batch CLI Runner for Hackathon Test A
+ * Vendora Batch CLI Runner for Hackathon Test A
  * Supports Google Gemini (gemini-3.6-flash), OpenAI (gpt-4o-mini), Groq, and local deterministic fallback.
  *
  * Usage:

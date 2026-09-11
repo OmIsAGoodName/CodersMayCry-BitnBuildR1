@@ -90,7 +90,7 @@ def create_deck():
     p.font.name = 'Arial'
 
     p2 = tf1.add_paragraph()
-    p2.text = "JanVyapar: Sovereign Offline Commerce & Order Ledger for Bharat"
+    p2.text = "Vendora: Sovereign Offline Commerce & Order Ledger for Bharat"
     p2.font.size = Pt(36)
     p2.font.bold = True
     p2.font.color.rgb = TEXT_MAIN
@@ -404,7 +404,7 @@ def create_deck():
     # -------------------------------------------------------------
     s7 = prs.slides.add_slide(blank_layout)
     set_slide_bg(s7)
-    add_header(s7, "Conclusion & Delivery", "Project Delivery & 1-Click Judge Submission Package", "Everything required to verify and evaluate JanVyapar in under 10 seconds.")
+    add_header(s7, "Conclusion & Delivery", "Project Delivery & 1-Click Judge Submission Package", "Everything required to verify and evaluate Vendora in under 10 seconds.")
 
     # 3 Summary Cards
     cards_s7 = [
@@ -440,7 +440,7 @@ def create_deck():
         p2.font.color.rgb = TEXT_MUTED
         p2.font.name = 'Arial'
 
-    output_path = os.path.abspath("JanVyapar_Presentation.pptx")
+    output_path = os.path.abspath("Vendora_Presentation.pptx")
     prs.save(output_path)
     print(f"Presentation saved successfully to: {output_path}")
 

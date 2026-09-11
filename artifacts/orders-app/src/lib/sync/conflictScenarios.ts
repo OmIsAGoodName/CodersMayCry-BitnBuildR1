@@ -1,5 +1,5 @@
 /**
- * JanVyapar Scripted Conflict Scenarios & Dual-Device Simulator
+ * Vendora Scripted Conflict Scenarios & Dual-Device Simulator
  *
  * Implements the 3 hackathon conflict scenarios:
  * - Scenario 1: Non-overlapping field edits (Device A edits amount, Device B edits due date)

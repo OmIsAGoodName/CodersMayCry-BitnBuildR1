@@ -24,7 +24,7 @@ export const supabase = url
     },
     global: {
       headers: {
-        "x-app-name": "janvyapar-offline-order",
+        "x-app-name": "vendora-offline-order",
       },
     },
   })

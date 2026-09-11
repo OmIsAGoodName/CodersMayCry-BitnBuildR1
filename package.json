@@ -1,5 +1,5 @@
 {
-  "name": "janvyapar-offline-orders",
+  "name": "vendora-offline-orders",
   "version": "1.0.0",
   "description": "Sovereign Offline-First Order Intake & Management System with Hybrid Universal NLP and CRDT Sync",
   "license": "MIT",

@@ -1,5 +1,5 @@
 /**
- * JanVyapar Field-Level Last-Write-Wins (LWW) CRDT with Hybrid Logical Clocks (HLC)
+ * Vendora Field-Level Last-Write-Wins (LWW) CRDT with Hybrid Logical Clocks (HLC)
  *
  * Guarantees:
  * 1. Deterministic Convergence: merge(A, B) === merge(B, A) under all reconnection sequences.

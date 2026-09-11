@@ -1,5 +1,5 @@
 /**
- * JanVyapar Universal Hybrid Parser with Multi-Model Switching
+ * Vendora Universal Hybrid Parser with Multi-Model Switching
  *
  * Supports:
  * - Google Gemini (gemini-3.6-flash, gemini-2.5-flash)
@@ -81,7 +81,7 @@ export function getSavedProviderKeys(): Record<LLMProvider, string> {
     };
   }
 
-  const stored = localStorage.getItem('janvyapar_provider_keys');
+  const stored = localStorage.getItem('vendora_provider_keys');
   let parsed: Partial<Record<LLMProvider, string>> = {};
   if (stored) {
     try { parsed = JSON.parse(stored); } catch {}
@@ -98,7 +98,7 @@ export function getSavedProviderKeys(): Record<LLMProvider, string> {
 
 export function hasCustomApiKey(provider: LLMProvider): boolean {
   if (typeof window === 'undefined') return false;
-  const stored = localStorage.getItem('janvyapar_provider_keys');
+  const stored = localStorage.getItem('vendora_provider_keys');
   if (!stored) return false;
   try {
     const parsed = JSON.parse(stored);
@@ -112,24 +112,24 @@ export function resetToManagedApiKey(provider: LLMProvider): void {
   if (typeof window === 'undefined') return;
   const current = getSavedProviderKeys();
   delete current[provider];
-  localStorage.setItem('janvyapar_provider_keys', JSON.stringify(current));
+  localStorage.setItem('vendora_provider_keys', JSON.stringify(current));
 }
 
 export function saveProviderKey(provider: LLMProvider, key: string): void {
   if (typeof window === 'undefined') return;
   const current = getSavedProviderKeys();
   current[provider] = key.trim();
-  localStorage.setItem('janvyapar_provider_keys', JSON.stringify(current));
+  localStorage.setItem('vendora_provider_keys', JSON.stringify(current));
 }
 
 export function getActiveModelId(): string {
   if (typeof window === 'undefined') return 'gemini-3.6-flash';
-  return localStorage.getItem('janvyapar_active_model') || 'gemini-3.6-flash';
+  return localStorage.getItem('vendora_active_model') || 'gemini-3.6-flash';
 }
 
 export function setActiveModelId(modelId: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem('janvyapar_active_model', modelId);
+  localStorage.setItem('vendora_active_model', modelId);
 }
 
 export function getActiveModelConfig(): { model: ModelOption; apiKey: string } {

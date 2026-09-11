@@ -205,7 +205,7 @@ export function StructuredJsonPage({
   const handleDownloadOutputJson = () => {
     if (!items.length) return;
     const jsonStr = getCleanJsonOutput();
-    const outName = fileName ? `clean-${fileName.replace(/\.[^/.]+$/, '')}-output.json` : 'janvyapar-structured-orders.json';
+    const outName = fileName ? `clean-${fileName.replace(/\.[^/.]+$/, '')}-output.json` : 'vendora-structured-orders.json';
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

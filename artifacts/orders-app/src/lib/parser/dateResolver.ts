@@ -1,5 +1,5 @@
 /**
- * JanVyapar Indian Colloquial & Relative Date Resolver
+ * Vendora Indian Colloquial & Relative Date Resolver
  *
  * Accurately parses:
  * - Relative days: aaj, kal, parso, tarso, narso, day after tomorrow

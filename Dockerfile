@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for JanVyapar Sovereign Offline Order System
+# Multi-stage Dockerfile for Vendora Sovereign Offline Order System
 FROM node:22-alpine AS builder
 
 WORKDIR /app

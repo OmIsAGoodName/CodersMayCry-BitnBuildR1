@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * JanVyapar Comprehensive Verification Suite
+ * Vendora Comprehensive Verification Suite
  * Tests all 5 objectives:
  * 1. Universal Message Parsing & Schema Contract (Test A)
  * 2. Colloquial Date Resolution
@@ -10,7 +10,7 @@
 
 import assert from 'node:assert';
 
-console.log('🚀 Running JanVyapar Comprehensive Verification Suite...\n');
+console.log('🚀 Running Vendora Comprehensive Verification Suite...\n');
 
 let passedTests = 0;
 let totalTests = 0;

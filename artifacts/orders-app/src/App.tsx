@@ -85,7 +85,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
         <Link href="/" className="brand" data-testid="link-brand">
           <span className="brand-mark">D</span>
           <span>
-            <span className="brand-name">JanVyapar</span>
+            <span className="brand-name">Vendora</span>
             <span className="brand-sub">Sovereign Offline Orders</span>
           </span>
         </Link>
@@ -164,7 +164,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
                 <Link href="/" className="brand" style={{ padding: 0 }} onClick={() => setDrawerOpen(false)}>
                   <span className="brand-mark">D</span>
                   <div>
-                    <span className="brand-name">JanVyapar</span>
+                    <span className="brand-name">Vendora</span>
                     <span className="brand-sub">Sovereign Offline Orders</span>
                   </div>
                 </Link>
@@ -924,7 +924,7 @@ function InboxPage({
                   resetToManagedApiKey(activeModel.provider);
                   setProviderKeys(getSavedProviderKeys());
                   setShowKeyModal(false);
-                  onNotify('Reset to JanVyapar Managed AI');
+                  onNotify('Reset to Vendora Managed AI');
                 }}
               >
                 Reset to Managed Default AI
@@ -1206,7 +1206,7 @@ function InboxPage({
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'janvyapar-batch-results.json';
+                a.download = 'vendora-batch-results.json';
                 a.click();
                 URL.revokeObjectURL(url);
               }}
@@ -1500,7 +1500,7 @@ function SettingsPage({
         <section className="settings-card">
           <div className="eyebrow">Multi-Model AI Providers</div>
           <h3 style={{ marginTop: 8 }}>AI Engines & API Keys</h3>
-          <p>JanVyapar includes pre-configured Cloud AI. You can also connect your own private keys.</p>
+          <p>Vendora includes pre-configured Cloud AI. You can also connect your own private keys.</p>
           
           <div className="field" style={{ marginTop: 14 }}>
             <label>Default Parser Model</label>
@@ -1528,7 +1528,7 @@ function SettingsPage({
                 <div>
                   <strong style={{ fontSize: 13 }}>Google Gemini (gemini-3.6-flash)</strong>
                   <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', marginTop: 2 }}>
-                    {hasCustomApiKey('gemini') ? '🔑 Custom Gemini Key (Active)' : '✨ JanVyapar Managed Cloud AI (Active & Protected)'}
+                    {hasCustomApiKey('gemini') ? '🔑 Custom Gemini Key (Active)' : '✨ Vendora Managed Cloud AI (Active & Protected)'}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -1539,7 +1539,7 @@ function SettingsPage({
                       onClick={() => {
                         resetToManagedApiKey('gemini');
                         setKeys(getSavedProviderKeys());
-                        onNotify('Reset to JanVyapar Managed Cloud AI');
+                        onNotify('Reset to Vendora Managed Cloud AI');
                       }}
                     >
                       Reset to Default
@@ -1671,7 +1671,7 @@ function SettingsPage({
           <div className="setting-row">
             <span>
               <strong>Restore From Backup</strong><br />
-              <small className="cell-muted">Import a JanVyapar backup JSON file.</small>
+              <small className="cell-muted">Import a Vendora backup JSON file.</small>
             </span>
             <label className="btn btn-quiet" htmlFor="workspace-import">
               <Upload /> Import Backup
@@ -1728,7 +1728,7 @@ function App() {
       setConflicts(data.conflicts);
       setLoaded(true);
 
-      const onboarded = localStorage.getItem('janvyapar_onboarded');
+      const onboarded = localStorage.getItem('vendora_onboarded');
       if (!onboarded) {
         setShowOnboarding(true);
       }
@@ -1824,7 +1824,7 @@ function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `janvyapar-backup-${dateOnly()}.json`;
+    a.download = `vendora-backup-${dateOnly()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     notify('Backup snapshot downloaded');

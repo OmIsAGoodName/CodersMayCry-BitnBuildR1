@@ -40,7 +40,7 @@ export function OnboardingModal({
       businessType: businessType.trim() || 'Custom Tailoring & Studio',
     };
 
-    localStorage.setItem('janvyapar_onboarded', 'true');
+    localStorage.setItem('vendora_onboarded', 'true');
     onComplete(updatedSettings);
   };
 
@@ -86,7 +86,7 @@ export function OnboardingModal({
             </span>
             <div>
               <div className="eyebrow" style={{ fontSize: 10 }}>Sovereign Device Setup</div>
-              <h2 style={{ fontSize: 20, margin: '2px 0 0' }}>Welcome to JanVyapar</h2>
+              <h2 style={{ fontSize: 20, margin: '2px 0 0' }}>Welcome to Vendora</h2>
             </div>
           </div>
           <p className="minor" style={{ marginTop: 8, fontSize: 13, lineHeight: 1.45 }}>
@@ -159,7 +159,7 @@ export function OnboardingModal({
                 />
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <strong style={{ fontSize: 13 }}>JanVyapar Managed AI (Recommended)</strong>
+                    <strong style={{ fontSize: 13 }}>Vendora Managed AI (Recommended)</strong>
                     <span style={{ fontSize: 9, background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', padding: '1px 6px', borderRadius: 99, fontWeight: 700, textTransform: 'uppercase' }}>
                       Zero Setup
                     </span>

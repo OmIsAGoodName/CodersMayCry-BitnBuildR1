@@ -1,7 +1,7 @@
 @echo off
-title JanVyapar - Sovereign Offline Order Management System
+title Vendora - Sovereign Offline Order Management System
 echo ======================================================
-echo    Starting JanVyapar Sovereign Offline System...
+echo    Starting Vendora Sovereign Offline System...
 echo ======================================================
 echo.
 

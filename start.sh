@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 echo "======================================================"
-echo "   Starting JanVyapar Sovereign Offline System..."
+echo "   Starting Vendora Sovereign Offline System..."
 echo "======================================================"
 echo ""
 

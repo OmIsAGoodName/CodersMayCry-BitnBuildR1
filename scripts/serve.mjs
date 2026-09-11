@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Standalone Zero-Dependency Static File Server for JanVyapar Submission
+ * Standalone Zero-Dependency Static File Server for Vendora Submission
  * Serves the pre-compiled production bundle and automatically opens the browser.
  */
 
@@ -73,7 +73,7 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
   const url = `http://localhost:${PORT}`;
   console.log('\n======================================================');
-  console.log('🚀 JanVyapar Sovereign Offline System is Running!');
+  console.log('🚀 Vendora Sovereign Offline System is Running!');
   console.log(`📡 Local URL:   ${url}`);
   console.log(`🌐 Network URL: http://0.0.0.0:${PORT}`);
   console.log('======================================================\n');

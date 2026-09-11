@@ -1,5 +1,5 @@
 /**
- * JanVyapar Universal Domain-Adaptive Rule-Based Engine
+ * Vendora Universal Domain-Adaptive Rule-Based Engine
  * Runs 100% offline, 0 dependencies, < 2ms latency.
  */
 

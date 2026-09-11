@@ -1,7 +1,7 @@
-# 🏆 JanVyapar — Quick Start Guide for Judges
+# 🏆 Vendora — Quick Start Guide for Judges
 > **Bit N Build Hackathon** · **Track 3: Jan Jeevan** · **Team CodersMayCry**
 
-Welcome! **JanVyapar** is a sovereign, offline-first order intake and ledger platform built for India's 63M+ grassroots merchants, kirana stores, and local businesses.
+Welcome! **Vendora** is a sovereign, offline-first order intake and ledger platform built for India's 63M+ grassroots merchants, kirana stores, and local businesses.
 
 ---
 

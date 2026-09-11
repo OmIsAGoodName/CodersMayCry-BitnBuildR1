@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "JanVyapar Orders"
+title = "Vendora Orders"
 description = "An offline-first order workspace for single-operator businesses. Parse messy customer messages into structured jobs, track due dates and payments, and surface sync conflicts without losing work."
 version = "1.0.0"
 id = "artifacts/orders-app"

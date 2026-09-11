@@ -1,5 +1,5 @@
 /**
- * JanVyapar Universal Domain Classifier
+ * Vendora Universal Domain Classifier
  * Automatically infers the business domain from raw message contents.
  */
 

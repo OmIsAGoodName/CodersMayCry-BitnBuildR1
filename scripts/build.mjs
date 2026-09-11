@@ -15,7 +15,7 @@ if (!fs.existsSync(path.join(repoRoot, 'pnpm-workspace.yaml'))) {
   repoRoot = process.cwd();
 }
 
-console.log('🚀 Building JanVyapar from repo root:', repoRoot);
+console.log('🚀 Building Vendora from repo root:', repoRoot);
 
 const viteConfig = path.join(repoRoot, 'artifacts/orders-app/vite.config.ts');
 const ordersDir = path.join(repoRoot, 'artifacts/orders-app');

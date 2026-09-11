@@ -1,7 +1,7 @@
 @echo off
-title JanVyapar Test Suite
+title Vendora Test Suite
 echo ======================================================
-echo    Running JanVyapar Verification Suite...
+echo    Running Vendora Verification Suite...
 echo ======================================================
 echo.
 node scripts/test-all.mjs
