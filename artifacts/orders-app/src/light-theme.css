@@ -343,3 +343,62 @@ body.theme-light {
 [data-theme="light"] .quick-card-body p {
   color: #475569 !important;
 }
+
+/* Light Mode Overrides for Organization Header & Hierarchy */
+[data-theme="light"] .org-header-bar {
+  background: #dedfe5 !important;
+  border-bottom: 1px solid #c9cdd6 !important;
+}
+[data-theme="light"] .org-name { color: #0f172a !important; }
+[data-theme="light"] .member-switch-btn {
+  background: #f4f5f8 !important;
+  border: 1px solid #cbd1dc !important;
+  color: #0f172a !important;
+}
+[data-theme="light"] .member-switch-btn:hover {
+  background: #e4e7ed !important;
+}
+[data-theme="light"] .member-dropdown-menu {
+  background: #f4f5f8 !important;
+  border: 1px solid #cbd1dc !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1) !important;
+}
+[data-theme="light"] .dropdown-title {
+  border-bottom: 1px solid #e2e6ed !important;
+}
+[data-theme="light"] .dropdown-item {
+  color: #0f172a !important;
+}
+[data-theme="light"] .dropdown-item:hover {
+  background: #e4e7ed !important;
+}
+[data-theme="light"] .dropdown-item.active {
+  background: #d8dce4 !important;
+}
+[data-theme="light"] .sync-trigger-btn {
+  background: #f4f5f8 !important;
+  border: 1px solid #cbd1dc !important;
+  color: #0f172a !important;
+}
+[data-theme="light"] .org-overview-panel {
+  background: #f4f5f8 !important;
+  border: 1px solid #cbd1dc !important;
+}
+[data-theme="light"] .kpi-val { color: #0f172a !important; }
+[data-theme="light"] .member-roster-row {
+  border-bottom: 1px solid #e2e6ed !important;
+}
+[data-theme="light"] .member-roster-avatar {
+  background: #e2e5eb !important;
+  border: 1px solid #cbd1dc !important;
+  color: #0f172a !important;
+}
+[data-theme="light"] .member-roster-header strong { color: #0f172a !important; }
+[data-theme="light"] .matrix-head {
+  border-bottom: 1px solid #cbd1dc !important;
+  color: #64748b !important;
+}
+[data-theme="light"] .matrix-row {
+  border-bottom: 1px solid #e2e6ed !important;
+}
+[data-theme="light"] .matrix-row strong { color: #0f172a !important; }

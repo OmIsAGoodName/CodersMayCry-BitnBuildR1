@@ -31,7 +31,9 @@ export default defineConfig({
   define: {
     'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(geminiKey),
     'import.meta.env.VITE_OPENAI_API_KEY': JSON.stringify(openAiKey),
-    'import.meta.env.VITE_AI_API_KEY': JSON.stringify(geminiKey || openAiKey),
+        'import.meta.env.VITE_AI_API_KEY': JSON.stringify(geminiKey || openAiKey),
+    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL || 'https://ttsmyustlrzvaxdiadml.supabase.co'),
+    'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0c215dXN0bHJ6dmF4ZGlhZG1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNDQ0MDQsImV4cCI6MjEwNDcyMDQwNH0.ckYILCG9jzdrw7lvMUlUhtAnqsMSKd-lm8zJCnJGrZ0'),
   },
   plugins: [
     react(),
@@ -111,7 +113,11 @@ export default defineConfig({
   },
   server: {
     port,
-    strictPort: false,
+        strictPort: false,
+    watch: {
+      usePolling: true,
+      interval: 800,
+    },
     host: '0.0.0.0',
     allowedHosts: true,
     fs: {

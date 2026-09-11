@@ -1,3 +1,9 @@
+import { OrgAuthProvider, useOrgAuth } from '@/context/OrgAuthContext';
+import { OrgHeader } from '@/components/OrgHeader';
+import { TeamManagementPage } from '@/pages/TeamManagementPage';
+import { supabase } from '@/lib/supabase';
+import { enqueueMutation, flushPendingMutations, pullCloudOrders, cloudToOrder } from '@/lib/sync/offlineSyncManager';
+import { Users as UsersIcon } from 'lucide-react';
 import { type ReactNode, useEffect, useState, useTransition } from 'react';
 import { Link, Route, Switch, useLocation } from 'wouter';
 import {
@@ -1898,6 +1904,14 @@ function App() {
     setOplog((prev) => [...prev, op]);
     setEditing(undefined);
     notify(existing ? 'Order updated locally' : 'Order saved to sovereign ledger');
+
+    // Cloud sync to Supabase
+    enqueueMutation('upsert', nextOrder.id, nextOrder);
+    if (navigator.onLine) {
+      flushPendingMutations('org_vendora_main').then((count) => {
+        if (count > 0) notify('Backed up to Supabase Cloud');
+      });
+    }
   };
 
   const deleteOrder = async (orderId: string) => {
@@ -1906,6 +1920,12 @@ function App() {
     setOrders((prev) => prev.filter((o) => o.id !== orderId));
     setEditing(undefined);
     notify('Order deleted from local ledger');
+
+    // Cloud delete from Supabase
+    enqueueMutation('delete', orderId);
+    if (navigator.onLine) {
+      flushPendingMutations('org_vendora_main');
+    }
   };
 
   const updateSettings = async (nextSettings: Settings) => {
@@ -1986,6 +2006,9 @@ function App() {
         <Route path="/structured-json">
           <StructuredJsonPage onSaveOrder={saveOrder} onNotify={notify} />
         </Route>
+                <Route path="/team">
+          <TeamManagementPage />
+        </Route>
         <Route path="/query">
           <div className="page">
             <Header
@@ -2047,10 +2070,12 @@ function Root() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <RoutedErrorBoundary>
-          <App />
-        </RoutedErrorBoundary>
-        <Toaster />
+        <OrgAuthProvider>
+          <RoutedErrorBoundary>
+            <App />
+          </RoutedErrorBoundary>
+          <Toaster />
+        </OrgAuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
