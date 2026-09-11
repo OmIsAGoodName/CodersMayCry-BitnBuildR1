@@ -540,6 +540,7 @@ function Dashboard({
   onNew: () => void;
   onEdit: (order: Order) => void;
 }) {
+  const { currentMember } = useOrgAuth();
   const active = orders.filter((o) => !['completed', 'cancelled'].includes(o.status));
   const due = active.filter((o) => o.dueDate === dateOnly()).length;
   const overdue = active.filter((o) => o.dueDate < dateOnly()).length;
