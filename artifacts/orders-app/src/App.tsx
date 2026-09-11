@@ -25,6 +25,7 @@ import { parseUniversalMessage } from '@/lib/parser/universalParser';
 import { QueryDesk } from '@/components/QueryDesk';
 import { StructuredJsonPage } from '@/pages/StructuredJsonPage';
 import { OnboardingModal } from '@/components/OnboardingModal';
+import { DayTracker, applyDayTheme } from '@/components/DayTracker';
 import { runScenario1, runScenario2, runScenario3, ScenarioTestResult } from '@/lib/sync/conflictScenarios';
 
 const queryClient = new QueryClient();
@@ -83,7 +84,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
       {/* Desktop Persistent Sidebar */}
       <aside className="sidebar">
         <Link href="/" className="brand" data-testid="link-brand">
-          <span className="brand-mark">D</span>
+          <span className="brand-mark">V</span>
           <span>
             <span className="brand-name">Vendora</span>
             <span className="brand-sub">Sovereign Offline Orders</span>
@@ -162,7 +163,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
             <div className="mobile-drawer-content" onClick={(e) => e.stopPropagation()}>
               <div className="mobile-drawer-header">
                 <Link href="/" className="brand" style={{ padding: 0 }} onClick={() => setDrawerOpen(false)}>
-                  <span className="brand-mark">D</span>
+                  <span className="brand-mark">V</span>
                   <div>
                     <span className="brand-name">Vendora</span>
                     <span className="brand-sub">Sovereign Offline Orders</span>
@@ -468,6 +469,8 @@ function Dashboard({
           </button>
         }
       />
+
+      <DayTracker todayLoadCount={due + overdue} outstandingAmount={money(outstanding)} />
 
       <div className="stats-grid">
         <div className="stat-card featured">
