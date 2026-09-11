@@ -1,3 +1,5 @@
+import { AuthModal } from '@/components/AuthModal';
+import { Laptop } from 'lucide-react';
 import React, { useState } from 'react';
 import { useOrgAuth, UserRole } from '@/context/OrgAuthContext';
 import { ShieldCheck, ShieldAlert, UserCheck, Cloud, CloudOff, RefreshCw, ChevronDown, Check, Building2, Plus, X } from 'lucide-react';
@@ -18,6 +20,8 @@ export function OrgHeader() {
 
   const [memberDropdownOpen, setMemberDropdownOpen] = useState(false);
   const [orgModalOpen, setOrgModalOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const { user } = useOrgAuth();
   const [syncing, setSyncing] = useState(false);
 
   // New Organization Form State
@@ -249,6 +253,7 @@ export function OrgHeader() {
           </div>
         </div>
       )}
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     </>
   );
 }

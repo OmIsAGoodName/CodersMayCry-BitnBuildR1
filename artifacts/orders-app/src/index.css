@@ -1357,3 +1357,23 @@ h3 { font-size: 15px; color: #fff; }
 .org-switch-pill:hover {
   background: #232c3d;
 }
+
+
+.device-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #1c2433;
+  border: 1px solid #2b364a;
+  color: #fff;
+  font: 700 10px var(--app-font-mono);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.device-link-btn:hover {
+  background: var(--day-accent);
+  border-color: var(--day-accent);
+  color: #fff;
+}

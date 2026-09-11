@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase, CloudOrganization } from '@/lib/supabase';
+import { User, Session } from '@supabase/supabase-js';
 
 export type UserRole = 'owner' | 'manager' | 'operator';
 
@@ -9,23 +10,37 @@ export interface OrgMemberProfile {
   role: UserRole;
   email?: string;
   avatarInitials: string;
+  userId?: string;
 }
 
 interface OrgAuthContextType {
+  // Multi-tenancy
   organization: CloudOrganization;
   organizations: CloudOrganization[];
   switchOrganization: (orgId: string) => void;
   createOrganization: (orgName: string, ownerName: string) => Promise<void>;
+  
+  // Member & Hierarchy
   currentMember: OrgMemberProfile;
   members: OrgMemberProfile[];
   switchMember: (memberId: string) => void;
   addMember: (name: string, role: UserRole, email?: string) => Promise<void>;
-  // Role permission helpers
+  
+  // Supabase Auth & Multi-Device Login
+  user: User | null;
+  session: Session | null;
+  loginWithEmail: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  signUpWithEmail: (email: string, password: string, fullName: string, storeName: string) => Promise<{ ok: boolean; error?: string }>;
+  loginWithStoreCode: (code: string, memberName?: string) => Promise<{ ok: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  
+  // Permissions
   canManageSettings: boolean;
   canApproveOrders: boolean;
   canDeleteRecords: boolean;
   canIntakeOrders: boolean;
-  // Connection status
+  
+  // Connection & Sync
   isOnline: boolean;
   pendingSyncCount: number;
   setPendingSyncCount: React.Dispatch<React.SetStateAction<number>>;
@@ -87,16 +102,20 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
     }
   });
 
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  // Supabase Auth State
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [pendingSyncCount, setPendingSyncCount] = useState<number>(0);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(new Date());
 
   const organization = organizations.find((o) => o.id === activeOrgId) || organizations[0];
   const currentMember = members.find((m) => m.id === currentMemberId) || members[0] || {
-    id: 'mem_fallback',
-    name: 'Store Operator',
+    id: 'mem_om',
+    name: 'Om Shetkar',
     role: 'owner',
-    avatarInitials: 'OP',
+    avatarInitials: 'OS',
   };
 
   // Role permissions
@@ -105,7 +124,24 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
   const canDeleteRecords = currentMember.role === 'owner';
   const canIntakeOrders = true;
 
-  // Track online status
+  // Listen for Supabase Auth state changes
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Track online/offline status
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -119,7 +155,7 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Fetch organizations from Supabase
+  // Fetch all organizations from Supabase
   useEffect(() => {
     async function loadCloudOrgs() {
       try {
@@ -137,7 +173,7 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isOnline]);
 
-  // Load members for current organization
+  // Load members for current organization from Supabase
   useEffect(() => {
     async function loadOrgMembers() {
       try {
@@ -170,12 +206,129 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isOnline, activeOrgId]);
 
+  // Auth: Log in with email & password across devices
+  const loginWithEmail = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+
+      setSession(data.session);
+      setUser(data.user);
+
+      // Check if user has an associated organization or member profile
+      const { data: memberData } = await supabase
+        .from('organization_members')
+        .select('*, organizations(*)')
+        .eq('email', email.trim());
+
+      if (memberData && memberData.length > 0) {
+        const primary = memberData[0];
+        setActiveOrgId(primary.org_id);
+        setCurrentMemberId(primary.id);
+        try {
+          localStorage.setItem('vendora_active_org_id', primary.org_id);
+          localStorage.setItem(`vendora_active_member_${primary.org_id}`, primary.id);
+        } catch {}
+      }
+
+      window.location.reload();
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'Login failed' };
+    }
+  };
+
+  // Auth: Sign up with email & create organization
+  const signUpWithEmail = async (email: string, password: string, fullName: string, storeName: string) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: { full_name: fullName.trim(), store_name: storeName.trim() },
+        },
+      });
+
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+
+      // Create new organization for this user
+      await createOrganization(storeName, fullName);
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'Sign up failed' };
+    }
+  };
+
+  // Auth: Instant multi-device sync via Store Code / Slug
+  const loginWithStoreCode = async (code: string, memberName?: string) => {
+    const cleanCode = code.trim().toLowerCase();
+    try {
+      // Find organization by ID or slug
+      const { data: orgData, error: orgErr } = await supabase
+        .from('organizations')
+        .select('*')
+        .or(`id.eq.${code.trim()},slug.eq.${cleanCode}`)
+        .limit(1);
+
+      if (orgErr || !orgData || orgData.length === 0) {
+        return { ok: false, error: 'Store not found with that Store ID or Slug' };
+      }
+
+      const foundOrg = orgData[0];
+      setActiveOrgId(foundOrg.id);
+      try {
+        localStorage.setItem('vendora_active_org_id', foundOrg.id);
+      } catch {}
+
+      // Fetch members of that org
+      const { data: memberData } = await supabase
+        .from('organization_members')
+        .select('*')
+        .eq('org_id', foundOrg.id);
+
+      if (memberData && memberData.length > 0) {
+        let match = memberData[0];
+        if (memberName) {
+          const found = memberData.find((m: any) => m.member_name.toLowerCase().includes(memberName.toLowerCase()));
+          if (found) match = found;
+        }
+        setCurrentMemberId(match.id);
+        try {
+          localStorage.setItem(`vendora_active_member_${foundOrg.id}`, match.id);
+        } catch {}
+      }
+
+      window.location.reload();
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'Store connection failed' };
+    }
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
+    try {
+      localStorage.removeItem('vendora_active_org_id');
+      localStorage.removeItem('vendora_active_member_id');
+    } catch {}
+    window.location.reload();
+  };
+
   const switchOrganization = (orgId: string) => {
     setActiveOrgId(orgId);
     try {
       localStorage.setItem('vendora_active_org_id', orgId);
     } catch {}
-    // Trigger reload or state flush for new org
     window.location.reload();
   };
 
@@ -199,7 +352,6 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
       avatarInitials: ownerInitials,
     };
 
-    // Update local state immediately
     const updatedOrgs = [...organizations, newOrg];
     setOrganizations(updatedOrgs);
     try {
@@ -209,7 +361,6 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('vendora_active_org_id', newOrgId);
     } catch {}
 
-    // Cloud backup to Supabase
     if (isOnline) {
       try {
         await supabase.from('organizations').insert({
@@ -232,7 +383,6 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Switch to the newly created organization!
     window.location.reload();
   };
 
@@ -296,6 +446,12 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
         members,
         switchMember,
         addMember,
+        user,
+        session,
+        loginWithEmail,
+        signUpWithEmail,
+        loginWithStoreCode,
+        logout,
         canManageSettings,
         canApproveOrders,
         canDeleteRecords,
