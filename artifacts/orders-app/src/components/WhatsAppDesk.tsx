@@ -4,7 +4,8 @@ import {
   RotateCcw, Sparkles, Send, Phone, User, Calendar, IndianRupee,
   Layers, Check, Copy, RefreshCw, Volume2, ShieldCheck, Zap,
   Globe, Server, Link2, ExternalLink
-, KeyRound} from 'lucide-react';
+, KeyRound, ChevronDown, X
+} from 'lucide-react';
 import { Order } from '@/lib/storage/offlineDb';
 import { parseUniversalMessage } from '@/lib/parser/universalParser';
 import { parseOrderHybrid, getActiveModelId, setActiveModelId } from '@/lib/parser/hybridParser';
@@ -132,6 +133,272 @@ const PRESET_SIMULATIONS = [
   },
 ];
 
+
+// ==========================================
+// CUSTOM STYLED AI ENGINE DROPDOWN
+// ==========================================
+interface EngineOption {
+  id: string;
+  label: string;
+  badge: string;
+  badgeColor: string;
+  description: string;
+  icon: 'groq' | 'gemini' | 'offline';
+}
+
+const ENGINE_OPTIONS: EngineOption[] = [
+  {
+    id: 'groq-qwen',
+    label: 'Groq Ultra-Fast (14,400 req/day)',
+    badge: '14,400 req/day · 0.3s',
+    badgeColor: '#A855F7',
+    description: 'Ultra-fast open weights inference (Qwen 2.5 & Llama 3.3)',
+    icon: 'groq',
+  },
+  {
+    id: 'gemini-3.6-flash',
+    label: 'Google Gemini 3.6 Flash',
+    badge: 'Multimodal AI',
+    badgeColor: '#38BDF8',
+    description: 'Deep semantic comprehension for Indian colloquialisms & Hinglish',
+    icon: 'gemini',
+  },
+  {
+    id: 'offline-engine',
+    label: 'Sovereign Local Engine (100% Offline)',
+    badge: '100% Offline · 0ms',
+    badgeColor: '#10B981',
+    description: 'Zero cloud dependencies, deterministic local regex & lexicon',
+    icon: 'offline',
+  },
+];
+
+function EngineSelectDropdown({
+  activeModel,
+  onChange,
+}: {
+  activeModel: string;
+  onChange: (modelId: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const currentOption =
+    ENGINE_OPTIONS.find((opt) => opt.id === activeModel) || ENGINE_OPTIONS[0];
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const renderIcon = (type: 'groq' | 'gemini' | 'offline') => {
+    switch (type) {
+      case 'groq':
+        return <Zap size={14} color="#A855F7" />;
+      case 'gemini':
+        return <Sparkles size={14} color="#38BDF8" />;
+      case 'offline':
+        return <ShieldCheck size={14} color="#10B981" />;
+    }
+  };
+
+  return (
+    <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
+      {/* Trigger Button */}
+      <button
+        type="button"
+        id="select-ai-engine"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '7px 13px',
+          borderRadius: 10,
+          background: 'hsl(var(--card))',
+          border: isOpen ? '1px solid hsl(var(--primary))' : '1px solid hsl(var(--border))',
+          color: 'inherit',
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          transition: 'all 0.15s ease',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        }}
+        title="Select AI Intake Engine"
+      >
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 20,
+            height: 20,
+            borderRadius: 6,
+            background:
+              currentOption.icon === 'groq'
+                ? 'rgba(168, 85, 247, 0.15)'
+                : currentOption.icon === 'gemini'
+                ? 'rgba(56, 189, 248, 0.15)'
+                : 'rgba(16, 185, 129, 0.15)',
+          }}
+        >
+          {renderIcon(currentOption.icon)}
+        </span>
+
+        <span style={{ color: 'hsl(var(--muted-foreground))' }}>Engine:</span>
+        <span style={{ fontWeight: 700, color: 'hsl(var(--foreground))' }}>
+          {currentOption.label.split(' ')[0]} {currentOption.label.split(' ')[1]}
+        </span>
+
+        <span
+          style={{
+            fontSize: 10,
+            padding: '1px 6px',
+            borderRadius: 4,
+            fontWeight: 700,
+            background: `${currentOption.badgeColor}1a`,
+            color: currentOption.badgeColor,
+            border: `1px solid ${currentOption.badgeColor}35`,
+          }}
+        >
+          {currentOption.badge.split('·')[0].trim()}
+        </span>
+
+        <ChevronDown
+          size={13}
+          style={{
+            color: 'hsl(var(--muted-foreground))',
+            transform: isOpen ? 'rotate(180deg)' : 'none',
+            transition: 'transform 0.2s ease',
+          }}
+        />
+      </button>
+
+      {/* Floating Menu Popover */}
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0,
+            width: 330,
+            zIndex: 150,
+            background: 'hsl(var(--card))',
+            border: '1px solid hsl(var(--border))',
+            borderRadius: 12,
+            padding: 6,
+            boxShadow: '0 16px 36px rgba(0, 0, 0, 0.45), 0 0 1px rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(20px)',
+          }}
+        >
+          <div
+            style={{
+              padding: '6px 8px 6px',
+              fontSize: 10,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: 0.6,
+              color: 'hsl(var(--muted-foreground))',
+            }}
+          >
+            Select AI Parser Engine
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {ENGINE_OPTIONS.map((opt) => {
+              const isSelected = opt.id === activeModel;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.id);
+                    setIsOpen(false);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 10,
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    background: isSelected ? 'hsl(var(--muted)/.6)' : 'transparent',
+                    border: isSelected ? '1px solid hsl(var(--border))' : '1px solid transparent',
+                    color: 'inherit',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'background 0.12s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.background = 'hsl(var(--muted)/.3)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.background = 'transparent';
+                    }
+                  }}
+                >
+                  <div
+                    style={{
+                      marginTop: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 24,
+                      height: 24,
+                      borderRadius: 6,
+                      background: `${opt.badgeColor}18`,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {renderIcon(opt.icon)}
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'hsl(var(--foreground))' }}>
+                        {opt.label}
+                      </span>
+                      {isSelected && <Check size={14} color="#38bdf8" />}
+                    </div>
+
+                    <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', marginTop: 2, lineHeight: 1.3 }}>
+                      {opt.description}
+                    </div>
+
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        marginTop: 4,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: opt.badgeColor,
+                      }}
+                    >
+                      {opt.badge}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
   const [status, setStatus] = useState<WhatsAppStatus>({
     status: 'disconnected',
@@ -163,6 +430,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
   });
   const [showBridgeModal, setShowBridgeModal] = useState(false);
   const [customBridgeInput, setCustomBridgeInput] = useState('');
+  const [dismissGuidance, setDismissGuidance] = useState(false);
 
   const getApiUrl = (endpoint: string) => {
     const base = bridgeUrl.trim().replace(/\/+$/, '');
@@ -513,87 +781,121 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
 
   return (
     <div className="page">
-      <div className="page-header" style={{ marginBottom: 20 }}>
-        <div>
-          <span className="eyebrow">Sovereign Hardware Bridge</span>
-          <h1 style={{ fontSize: 28, fontWeight: 700, margin: '4px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="page-header" style={{ marginBottom: 22, gap: 16 }}>
+        <div style={{ maxWidth: 740 }}>
+          <span className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+            SOVEREIGN HARDWARE BRIDGE
+          </span>
+          <h1 style={{ fontSize: 26, fontWeight: 700, margin: '3px 0 8px', display: 'flex', alignItems: 'center', gap: 10 }}>
             <MessageSquare size={26} color="#25D366" />
             WhatsApp Business Live Intake Desk
           </h1>
-          <p className="subtitle" style={{ margin: 0 }}>
-            Zero-cloud-cost multi-device pairing. Ingests fragmented customer chats, debounces bursts, isolates individual customer lines, auto-resolves Hinglish colloquialisms, and records orders into your Sovereign Ledger.
+          <p className="subtitle" style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'hsl(var(--muted-foreground))' }}>
+            Zero-cloud-cost multi-device pairing. Aggregates burst customer chats, debounces multi-turn messages, auto-resolves Hinglish colloquialisms, and records orders straight into your Sovereign Ledger.
           </p>
         </div>
 
-        {/* Top Status Pill */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            className={`sync-badge ${status.status === 'connected' ? 'sync-online' : status.status === 'qr_ready' || status.status === 'connecting' ? 'sync-pending' : 'sync-offline'}`}
-            style={{ padding: '8px 14px', fontSize: 12 }}
-          >
-            <button
+        {/* Top Status & Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', alignSelf: 'flex-start' }}>
+          {/* Bridge Toggle */}
+          <button
+            type="button"
             className="btn btn-quiet"
             onClick={() => {
               setCustomBridgeInput(bridgeUrl);
               setShowBridgeModal(true);
             }}
             title="Configure Cloud Backend Bridge URL (Render / Railway)"
-            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '7px 12px', borderRadius: 9 }}
           >
             <Server size={14} color={bridgeUrl ? '#38BDF8' : '#94A3B8'} />
             <span>{bridgeUrl ? 'Cloud Bridge' : 'Local Bridge'}</span>
           </button>
 
+          {/* Connection Status Capsule */}
           <div
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 6,
-              padding: '6px 12px',
-              borderRadius: 8,
-              background: 'rgba(16, 185, 129, 0.1)',
-              border: '1px solid rgba(16, 185, 129, 0.25)',
-              fontSize: 11,
-              color: '#10B981',
-              fontWeight: 600,
+              gap: 8,
+              padding: '7px 14px',
+              borderRadius: 9,
+              background: status.status === 'connected'
+                ? 'rgba(16, 185, 129, 0.12)'
+                : status.status === 'qr_ready' || status.status === 'connecting'
+                  ? 'rgba(245, 158, 11, 0.12)'
+                  : 'rgba(239, 68, 68, 0.09)',
+              border: status.status === 'connected'
+                ? '1px solid rgba(16, 185, 129, 0.3)'
+                : status.status === 'qr_ready' || status.status === 'connecting'
+                  ? '1px solid rgba(245, 158, 11, 0.3)'
+                  : '1px solid rgba(239, 68, 68, 0.25)',
+              fontSize: 12,
+              fontWeight: 700,
+              color: status.status === 'connected'
+                ? '#10B981'
+                : status.status === 'qr_ready' || status.status === 'connecting'
+                  ? '#F59E0B'
+                  : '#F87171',
             }}
-            title="AI Privacy Guard auto-filters spouse messages, family chats, personal chatter, and OTPs so employees only see commercial orders"
           >
-            <ShieldCheck size={13} />
-            <span>AI Privacy Guard Active</span>
-          </div>
-
-          {status.status === 'connected' ? (
-              <>
-                <Wifi size={14} color="#10B981" />
-                <span>CONNECTED: {status.connectedName} (+{status.connectedNumber})</span>
-              </>
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: status.status === 'connected'
+                  ? '#10B981'
+                  : status.status === 'qr_ready' || status.status === 'connecting'
+                    ? '#F59E0B'
+                    : '#EF4444',
+                boxShadow: status.status === 'connected' ? '0 0 8px #10B981' : 'none',
+              }}
+            />
+            {status.status === 'connected' ? (
+              <span>CONNECTED: {status.connectedName} (+{status.connectedNumber})</span>
             ) : status.status === 'qr_ready' ? (
-              <>
-                <QrCode size={14} className="spin" />
-                <span>READY TO PAIR (SCAN QR)</span>
-              </>
+              <span>READY TO PAIR (SCAN QR)</span>
             ) : status.status === 'connecting' ? (
-              <>
-                <RefreshCw size={14} className="spin" />
-                <span>CONNECTING WA WEBSOCKET...</span>
-              </>
+              <span>CONNECTING WEBSOCKET...</span>
             ) : (
-              <>
-                <WifiOff size={14} />
-                <span>DISCONNECTED</span>
-              </>
+              <span>DISCONNECTED</span>
             )}
           </div>
 
+          {/* Connect / Disconnect Action */}
           {status.status === 'connected' ? (
-            <button className="btn btn-quiet" onClick={handleDisconnect} title="Disconnect linked WhatsApp device">
+            <button
+              type="button"
+              className="btn btn-quiet"
+              onClick={handleDisconnect}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '7px 14px', borderRadius: 9 }}
+              title="Disconnect linked WhatsApp device"
+            >
               <WifiOff size={14} /> Disconnect
             </button>
           ) : (
-            <button className="btn btn-primary" onClick={handleConnect} disabled={connecting || status.status === 'connecting'}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleConnect}
+              disabled={connecting || status.status === 'connecting'}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 12,
+                padding: '7px 16px',
+                borderRadius: 9,
+                fontWeight: 700,
+                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)',
+              }}
+            >
               {connecting ? <RefreshCw size={14} className="spin" /> : <QrCode size={14} />}
-              {status.status === 'qr_ready' ? 'Regenerate QR' : 'Pair WhatsApp'}
+              <span>{status.status === 'qr_ready' ? 'Regenerate QR' : 'Pair WhatsApp'}</span>
             </button>
           )}
         </div>
@@ -606,64 +908,35 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: 12,
+          gap: 14,
           padding: '12px 18px',
           background: 'hsl(var(--card))',
           border: '1px solid hsl(var(--border))',
-          borderRadius: 12,
-          marginBottom: 18,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          borderRadius: 14,
+          marginBottom: 16,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'hsl(var(--muted-foreground))' }}>
-            INTAKE CONTROLS:
-          </span>
-
-          {/* Engine Selector: Groq, Gemini, or Offline */}
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '5px 12px',
-              borderRadius: 8,
-              background: activeModel === 'offline-engine' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(168, 85, 247, 0.18)',
-              border: activeModel === 'offline-engine' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(168, 85, 247, 0.45)',
-              color: activeModel === 'offline-engine' ? '#10B981' : '#C084FC',
-              fontSize: 12,
-              fontWeight: 700,
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          {/* Custom Engine Dropdown */}
+          <EngineSelectDropdown
+            activeModel={activeModel}
+            onChange={(val) => {
+              setActiveModel(val);
+              setActiveModelId(val);
+              onNotify(
+                `Switched to ${
+                  val === 'groq-qwen'
+                    ? 'Groq Fast Engine (14,400 req/day)'
+                    : val === 'gemini-3.6-flash'
+                    ? 'Google Gemini 3.6 Flash'
+                    : 'Sovereign Local Engine'
+                }`
+              );
             }}
-            title="Select AI Engine: Groq gives 14,400 free requests/day with 0.3s speed; Gemini gives rich reasoning; Offline engine runs 100% locally"
-          >
-            {activeModel === 'offline-engine' ? <ShieldCheck size={14} color="#10B981" /> : <Sparkles size={14} color="#C084FC" />}
-            <span>Engine:</span>
-            <select
-              id="select-ai-engine"
-              value={activeModel}
-              onChange={(e) => {
-                const val = e.target.value;
-                setActiveModel(val);
-                setActiveModelId(val);
-                onNotify(`Switched to ${val === 'groq-qwen' ? 'Groq Fast Engine (14,400 req/day)' : val === 'gemini-3.6-flash' ? 'Google Gemini 3.6 Flash' : 'Sovereign Local Engine'}`);
-              }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'inherit',
-                fontWeight: 700,
-                fontSize: 12,
-                cursor: 'pointer',
-                outline: 'none',
-              }}
-            >
-              <option value="groq-qwen" style={{ background: '#0F172A', color: '#C084FC' }}>⚡ Groq Ultra-Fast (14,400 req/day)</option>
-              <option value="gemini-3.6-flash" style={{ background: '#0F172A', color: '#60A5FA' }}>⚡ Google Gemini 3.6 Flash</option>
-              <option value="offline-engine" style={{ background: '#0F172A', color: '#10B981' }}>🛡️ Sovereign Local Engine (Offline)</option>
-            </select>
-          </div>
+          />
 
-          {/* Toggle 2: Privacy Keyword Gate */}
+          {/* Privacy Keyword Gate */}
           <button
             type="button"
             id="toggle-keyword-gate-btn"
@@ -671,51 +944,91 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 7,
-              padding: '6px 14px',
-              borderRadius: 8,
-              background: (status.requireKeyword ?? true) ? 'rgba(59, 130, 246, 0.18)' : 'rgba(234, 179, 8, 0.15)',
+              gap: 8,
+              padding: '7px 14px',
+              borderRadius: 10,
+              background: (status.requireKeyword ?? true) ? 'rgba(56, 189, 248, 0.09)' : 'rgba(234, 179, 8, 0.09)',
               color: (status.requireKeyword ?? true) ? '#38BDF8' : '#FBBF24',
-              border: (status.requireKeyword ?? true) ? '1px solid rgba(59, 130, 246, 0.45)' : '1px solid rgba(234, 179, 8, 0.4)',
+              border: (status.requireKeyword ?? true) ? '1px solid rgba(56, 189, 248, 0.28)' : '1px solid rgba(234, 179, 8, 0.28)',
               fontSize: 12,
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 0.15s ease',
             }}
             title="When active, messages MUST start with 'order' (e.g. 'Order: ...') so personal family chats are 100% ignored. Click to switch to Auto-Detect All."
           >
-            <KeyRound size={14} />
-            <span>Keyword Gate: {(status.requireKeyword ?? true) ? 'Prefix "Order" REQUIRED' : 'Auto-Detect All Messages'}</span>
-            <span style={{ fontSize: 10, opacity: 0.7, marginLeft: 2 }}>(Click to switch)</span>
+            <KeyRound size={13} />
+            <span style={{ color: 'hsl(var(--muted-foreground))' }}>Keyword Gate:</span>
+            <span style={{ fontWeight: 700, color: (status.requireKeyword ?? true) ? '#38BDF8' : '#FBBF24' }}>
+              {(status.requireKeyword ?? true) ? 'Required (Prefix "Order")' : 'Off (Auto-Detect All)'}
+            </span>
           </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>
-          <span>🛡️ <strong>Zero-Leak Privacy:</strong> {(status.requireKeyword ?? true) ? 'Personal & domestic chats strictly shielded' : 'AI intent scanning active'}</span>
-        </div>
-      </div>
-
-      {/* Cloud & Judge Guidance Banner */}
-      <div
-        style={{
-          background: 'rgba(59, 130, 246, 0.08)',
-          border: '1px solid rgba(59, 130, 246, 0.25)',
-          borderRadius: 10,
-          padding: '10px 16px',
-          marginBottom: 18,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: 12,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Sparkles size={16} color="#3B82F6" />
-          <span>
-            <strong>Multi-Turn WhatsApp Business Bridge:</strong> Experience automated customer message aggregation, the 3.0s sliding burst debouncer, and audio feedback live. Use the <strong>Interactive Simulator</strong> on the right to test without a phone, or pair any physical device via <strong>QR Connect</strong>.
+        {/* Right side: Zero-Leak Privacy Pill */}
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 7,
+            padding: '5px 12px',
+            borderRadius: 20,
+            background: 'rgba(16, 185, 129, 0.08)',
+            border: '1px solid rgba(16, 185, 129, 0.2)',
+            fontSize: 12,
+            color: '#10B981',
+            fontWeight: 600,
+          }}
+          title="AI Privacy Guard auto-filters spouse messages, family chats, personal chatter, and OTPs so employees only see commercial orders"
+        >
+          <ShieldCheck size={14} />
+          <span>Zero-Leak Shield Active</span>
+          <span style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', fontWeight: 400 }}>
+            · {(status.requireKeyword ?? true) ? 'Personal & domestic chats shielded' : 'AI intent scanning active'}
           </span>
         </div>
       </div>
+
+      {/* Subtle Guidance Strip with Dismiss */}
+      {!dismissGuidance && (
+        <div
+          style={{
+            background: 'rgba(56, 189, 248, 0.05)',
+            border: '1px solid rgba(56, 189, 248, 0.18)',
+            borderRadius: 10,
+            padding: '8px 14px',
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: 12,
+            color: 'hsl(var(--muted-foreground))',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Sparkles size={14} color="#38BDF8" style={{ flexShrink: 0 }} />
+            <span>
+              <strong style={{ color: 'hsl(var(--foreground))' }}>Multi-Turn WhatsApp Bridge:</strong> Live 3.0s burst debouncing with instant voice &amp; message resolution. Use the <strong>Interactive Simulator</strong> on the right to test without a phone, or pair via <strong>QR Connect</strong>.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDismissGuidance(true)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'hsl(var(--muted-foreground))',
+              cursor: 'pointer',
+              padding: 4,
+              display: 'flex',
+              alignItems: 'center',
+            }}
+            title="Dismiss notice"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
 
       {/* Live Aggregation Pulse Banner (Burst Debouncer in action) */}
       {activeActivity && (
