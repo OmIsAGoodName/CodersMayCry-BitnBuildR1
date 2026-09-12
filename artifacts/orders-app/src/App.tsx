@@ -894,7 +894,6 @@ function InboxPage({
   const [message, setMessage] = useState('');
   const [parsed, setParsed] = useState<HybridParseResult | null>(null);
   const [busy, setBusy] = useState(false);
-  const [batchResults, setBatchResults] = useState<unknown[] | null>(null);
   const [forceOffline, setForceOffline] = useState(false);
 
   // Model & Provider Selection State
@@ -1213,23 +1212,6 @@ function InboxPage({
     setParsed(null);
   };
 
-  const handleBatchFile = (file: File) => {
-    file.text().then((text) => {
-      try {
-        const json = JSON.parse(text);
-        const list = Array.isArray(json) ? json : json.messages || [json];
-        const results = list.map((item: unknown) => {
-          const msg = typeof item === 'string' ? item : (item as Record<string, string>).message || JSON.stringify(item);
-          return parseUniversalMessage(msg);
-        });
-        setBatchResults(results);
-        onNotify(`Batch processed: ${results.length} messages parsed offline`);
-      } catch {
-        onNotify('Invalid JSON file format');
-      }
-    });
-  };
-
   return (
     <div className="page">
       <Header
@@ -1249,26 +1231,8 @@ function InboxPage({
             >
               <Cpu size={14} /> {forceOffline ? 'Forced Offline' : 'Hybrid Mode'}
             </button>
-            <button
-              className="btn btn-quiet"
-              onClick={() => document.getElementById('batch-upload-input')?.click()}
-              data-testid="button-import-batch"
-            >
-              <Upload /> Import Test A Batch
-            </button>
           </div>
         }
-      />
-
-      <input
-        id="batch-upload-input"
-        hidden
-        type="file"
-        accept=".json,application/json"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) handleBatchFile(file);
-        }}
       />
 
       <div className="inbox-grid">
@@ -1551,37 +1515,6 @@ function InboxPage({
         </section>
       </div>
 
-      {/* Batch Test A Runner Results Drawer */}
-      {batchResults && (
-        <section className="panel" style={{ marginTop: 22 }}>
-          <div className="panel-head">
-            <div>
-              <h2>Test A Batch Results ({batchResults.length} records)</h2>
-              <span className="minor">Strict schema.json contract</span>
-            </div>
-            <button
-              className="btn btn-quiet"
-              onClick={() => {
-                const blob = new Blob([JSON.stringify(batchResults, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'vendora-batch-results.json';
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              data-testid="button-export-batch-results"
-            >
-              <Download /> Download results.json
-            </button>
-          </div>
-          <div style={{ padding: '0 22px 22px' }}>
-            <pre className="json-box" style={{ maxHeight: 280 }}>
-              {JSON.stringify(batchResults.slice(0, 10), null, 2)}
-            </pre>
-          </div>
-        </section>
-      )}
     </div>
   );
 }
@@ -1605,29 +1538,12 @@ function SettingsPage({
 }) {
   const { currentUser, logout } = useOrgAuth();
   const [form, setForm] = useState(settings);
-  const [keys, setKeys] = useState(getSavedProviderKeys());
-  const [defaultModel, setDefaultModel] = useState(getActiveModelId());
-  const [keyModalProvider, setKeyModalProvider] = useState<'gemini' | 'openai' | null>(null);
-  const [customKeyInput, setCustomKeyInput] = useState('');
 
   useEffect(() => {
     setForm(settings);
   }, [settings]);
 
   const set = (key: keyof Settings, value: unknown) => setForm((prev) => ({ ...prev, [key]: value }));
-
-  const handleSaveKey = () => {
-    if (!keyModalProvider) return;
-    if (!customKeyInput.trim()) {
-      alert('Please enter a valid API key string.');
-      return;
-    }
-    saveProviderKey(keyModalProvider, customKeyInput.trim());
-    setKeys(getSavedProviderKeys());
-    onNotify(`Custom ${keyModalProvider.toUpperCase()} key saved to this device.`);
-    setKeyModalProvider(null);
-    setCustomKeyInput('');
-  };
 
   return (
     <div className="page">
@@ -1675,136 +1591,6 @@ function SettingsPage({
               <Check /> Save Profile
             </button>
           </div>
-        </section>
-
-        <section className="settings-card">
-          <div className="eyebrow">Multi-Model AI Providers</div>
-          <h3 style={{ marginTop: 8 }}>AI Engines & API Keys</h3>
-          <p>Vendora includes pre-configured Cloud AI. You can also connect your own private keys.</p>
-          
-          <div className="field" style={{ marginTop: 14 }}>
-            <label>Default Parser Model</label>
-            <select
-              className="input"
-              value={defaultModel}
-              onChange={(e) => {
-                setDefaultModel(e.target.value);
-                setActiveModelId(e.target.value);
-                onNotify(`Default AI parser set to ${e.target.value}`);
-              }}
-            >
-              {AVAILABLE_MODELS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {/* Gemini Status Card */}
-            <div style={{ background: 'hsl(var(--muted)/.4)', border: '1px solid hsl(var(--border))', borderRadius: 12, padding: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                <div>
-                  <strong style={{ fontSize: 13 }}>Google Gemini (gemini-3.6-flash)</strong>
-                  <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', marginTop: 2 }}>
-                    {hasCustomApiKey('gemini') ? '?? Custom Gemini Key (Active)' : '? Vendora Managed Cloud AI (Active & Protected)'}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {hasCustomApiKey('gemini') && (
-                    <button
-                      className="btn btn-quiet"
-                      style={{ padding: '5px 10px', fontSize: 11 }}
-                      onClick={() => {
-                        resetToManagedApiKey('gemini');
-                        setKeys(getSavedProviderKeys());
-                        onNotify('Reset to Vendora Managed Cloud AI');
-                      }}
-                    >
-                      Reset to Default
-                    </button>
-                  )}
-                  <button
-                    className="btn btn-secondary"
-                    style={{ padding: '5px 12px', fontSize: 11 }}
-                    onClick={() => {
-                      setKeyModalProvider('gemini');
-                      setCustomKeyInput('');
-                    }}
-                  >
-                    <Key size={12} /> {hasCustomApiKey('gemini') ? '?? Custom Gemini Key (Active)' : '? Vendora Managed Cloud AI (Active & Protected)'}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* OpenAI Status Card */}
-            <div style={{ background: 'hsl(var(--muted)/.4)', border: '1px solid hsl(var(--border))', borderRadius: 12, padding: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                <div>
-                  <strong style={{ fontSize: 13 }}>OpenAI (gpt-4o-mini)</strong>
-                  <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', marginTop: 2 }}>
-                    {hasCustomApiKey('openai') ? '?? Custom OpenAI Key (Active)' : 'Optional ? Not configured'}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {hasCustomApiKey('openai') && (
-                    <button
-                      className="btn btn-quiet"
-                      style={{ padding: '5px 10px', fontSize: 11 }}
-                      onClick={() => {
-                        resetToManagedApiKey('openai');
-                        setKeys(getSavedProviderKeys());
-                        onNotify('OpenAI key cleared.');
-                      }}
-                    >
-                      Clear
-                    </button>
-                  )}
-                  <button
-                    className="btn btn-quiet"
-                    style={{ padding: '5px 12px', fontSize: 11 }}
-                    onClick={() => {
-                      setKeyModalProvider('openai');
-                      setCustomKeyInput('');
-                    }}
-                  >
-                    <Key size={12} /> {hasCustomApiKey('openai') ? '?? Custom OpenAI Key (Active)' : 'Optional ? Not configured'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Inline Key Modal Dialog */}
-          {keyModalProvider && (
-            <div style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--secondary))', borderRadius: 12, padding: 16, marginTop: 14, boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}>
-              <div className="eyebrow" style={{ marginBottom: 6 }}>
-                Set Private {keyModalProvider === 'gemini' ? 'Google Gemini' : 'OpenAI'} API Key
-              </div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <input
-                  type="password"
-                  className="input"
-                  value={customKeyInput}
-                  onChange={(e) => setCustomKeyInput(e.target.value)}
-                  placeholder={keyModalProvider === 'gemini' ? 'Paste Gemini Key (AQ... or AIza...)' : 'Paste OpenAI Key (sk-...)'}
-                  style={{ flex: 1 }}
-                  autoFocus
-                />
-                <button className="btn btn-primary" onClick={handleSaveKey}>
-                  Save
-                </button>
-                <button className="btn btn-quiet" onClick={() => setKeyModalProvider(null)}>
-                  Cancel
-                </button>
-              </div>
-              <small style={{ display: 'block', color: 'hsl(var(--muted-foreground))', marginTop: 8, fontSize: 11 }}>
-                🔒 <strong>Privacy Guaranteed:</strong> Key is saved solely in this device's browser memory and never broadcast.
-              </small>
-            </div>
-          )}
         </section>
 
         <section className="settings-card">
@@ -1882,7 +1668,7 @@ function SettingsPage({
           <div className="setting-row">
             <span>
               <strong>Reset Sample Data</strong><br />
-              <small className="cell-muted">Reset local storage back to standard benchmark seed records.</small>
+              <small className="cell-muted">Reset local storage back to standard demo seed records.</small>
             </span>
             <button className="btn btn-danger" onClick={onReset} data-testid="button-reset-workspace">
               <Trash2 /> Reset Data
@@ -2181,13 +1967,13 @@ function App() {
   };
 
   const resetWorkspace = async () => {
-    if (!window.confirm('Reset all records back to default hackathon benchmark data?')) return;
+    if (!window.confirm('Reset all records back to demo store defaults?')) return;
     const res = await OfflineStorage.resetToSampleData();
     setOrders(res.orders);
     setSettings(res.settings);
     setOplog([]);
     setConflicts([]);
-    notify('Benchmark workspace restored');
+    notify('Demo store workspace restored');
   };
 
   const resolveConflict = async (id: string, resolution: 'local' | 'remote' | 'merge') => {
