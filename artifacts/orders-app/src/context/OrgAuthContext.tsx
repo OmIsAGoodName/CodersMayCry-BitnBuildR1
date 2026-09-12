@@ -179,12 +179,14 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
       if (!error && data) {
         for (const m of data) {
           const isInvite = Boolean(m.email && m.email.startsWith('invite:'));
+          const mName = m.member_name || m.email || 'Team Member';
+          const mInitials = m.avatar_initials || (mName ? mName.slice(0, 2).toUpperCase() : 'EM');
           memberMap.set(m.id, {
             id: m.id,
-            name: m.member_name,
-            role: m.role as UserRole,
-            email: m.email,
-            avatarInitials: m.avatar_initials || (m.member_name ? m.member_name.slice(0, 2).toUpperCase() : 'EM'),
+            name: mName,
+            role: (m.role as UserRole) || 'operator',
+            email: m.email || '',
+            avatarInitials: mInitials,
             status: isInvite ? 'pending' : 'active',
           });
         }
@@ -193,26 +195,29 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
       // Also merge any users registered under this org_id
       if (usersData) {
         for (const u of usersData) {
+          const uName = u.full_name || u.username || 'Employee';
+          const uEmail = u.username ? `${u.username}@vendora.store`.toLowerCase() : '';
           const existing = Array.from(memberMap.values()).find(
             (m) =>
               m.id === u.id ||
-              m.email?.toLowerCase() === `${u.username}@vendora.store`.toLowerCase() ||
-              m.name.toLowerCase() === u.full_name.toLowerCase()
+              (uEmail && m.email && m.email.toLowerCase() === uEmail) ||
+              (m.name && m.name.toLowerCase() === uName.toLowerCase())
           );
 
           if (!existing) {
             const initials =
-              u.full_name
+              uName
                 .split(' ')
-                .map((w: string) => w[0])
+                .filter(Boolean)
+                .map((w: string) => w[0] || '')
                 .join('')
                 .slice(0, 2)
                 .toUpperCase() || 'EM';
             memberMap.set(u.id, {
               id: u.id,
-              name: u.full_name,
-              role: u.role as UserRole,
-              email: `${u.username}@vendora.store`,
+              name: uName,
+              role: (u.role as UserRole) || 'operator',
+              email: uEmail,
               avatarInitials: initials,
               status: 'active',
             });
@@ -228,10 +233,12 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
         } catch {}
 
         if (currentUser) {
+          const cUsername = (currentUser.username || '').toLowerCase();
+          const cFullName = (currentUser.fullName || '').toLowerCase();
           const matching = mapped.find(
             (m) =>
-              m.email?.toLowerCase().startsWith(currentUser.username.toLowerCase() + '@') ||
-              m.name.toLowerCase() === currentUser.fullName.toLowerCase() ||
+              (cUsername && m.email && m.email.toLowerCase().startsWith(cUsername + '@')) ||
+              (cFullName && m.name && m.name.toLowerCase() === cFullName) ||
               m.id === currentUser.id
           );
           if (matching) {
@@ -264,10 +271,16 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
   // Authenticated user is the absolute authority for identity and permissions
   const currentMember: OrgMemberProfile | null = currentUser ? {
     id: currentUser.id,
-    name: currentUser.fullName,
-    role: currentUser.role, // STRICTLY LOCKED TO AUTHENTICATED USER'S ASSIGNED ROLE
-    avatarInitials: currentUser.fullName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'EM',
-    email: `${currentUser.username}@vendora.store`
+    name: currentUser.fullName || currentUser.username || 'Team Member',
+    role: currentUser.role || 'operator', // STRICTLY LOCKED TO AUTHENTICATED USER'S ASSIGNED ROLE
+    avatarInitials: (currentUser.fullName || currentUser.username || 'EM')
+      .split(' ')
+      .filter(Boolean)
+      .map(w => w[0] || '')
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'EM',
+    email: `${currentUser.username || 'user'}@vendora.store`
   } : null;
 
   // Role permissions

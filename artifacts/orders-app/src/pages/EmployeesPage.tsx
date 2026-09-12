@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useOrgAuth, UserRole } from '@/context/OrgAuthContext';
 import {
   checkUserExists,
@@ -144,7 +144,8 @@ export function EmployeesPage() {
   };
 
   const activeMembers = useMemo(() => {
-    return members.filter((m) => {
+    return (members || []).filter((m) => {
+      if (!m) return false;
       if (m.email?.startsWith('invite:')) return false;
       if (m.status === 'pending') return false;
       return true;
@@ -274,7 +275,7 @@ export function EmployeesPage() {
         <div className="stat-card">
           <div className="stat-label">Your Authority</div>
           <div className="stat-value" style={{ fontSize: 20, color: '#38bdf8' }}>
-            {currentMember ? currentMember.role.toUpperCase() : 'OPERATOR'}
+            {currentMember?.role ? currentMember.role.toUpperCase() : 'OPERATOR'}
           </div>
           <div className="stat-meta">{isOwner ? 'Full store governance' : 'Operational privileges'}</div>
           <Shield className="stat-icon" size={44} />
@@ -428,7 +429,7 @@ export function EmployeesPage() {
                           fontSize: 12,
                         }}
                       >
-                        @{inv.employeeUsername.slice(0, 2).toUpperCase()}
+                        @{(inv.employeeUsername || 'EM').slice(0, 2).toUpperCase()}
                       </div>
                       <div>
                         <strong style={{ display: 'block', fontSize: 13, color: '#f8fafc' }}>
