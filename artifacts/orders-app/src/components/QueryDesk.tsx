@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { Order, Settings } from '@/lib/storage/offlineDb';
 import { getSavedProviderKeys } from '@/lib/parser/hybridParser';
-import { transcribeAudio, getSupportedAudioMimeType, setupAudioAnalyser } from '@/lib/speech/audioTranscriber';
+import { transcribeAudio, getSupportedAudioMimeType, setupAudioAnalyser, isOperaOrNonChrome } from '@/lib/speech/audioTranscriber';
 
 interface QueryDeskProps {
   orders: Order[];
@@ -208,6 +208,42 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
   }, [query, customerHistoryMap, selectedCustomer]);
 
   // Stop Recording / Listening
+  const startMediaRecorderVoice = async () => {
+    try {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch {}
+        recognitionRef.current = null;
+      }
+
+      setIsListening(true);
+      setLiveTranscript('');
+      setSpeechState('listening');
+      setVoiceStatus('🎙️ Microphone active. Speak now, tap "Done ✓" when finished...');
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      audioChunksRef.current = [];
+
+      // Web Audio API volume feedback
+      if (cleanupAudioAnalyserRef.current) cleanupAudioAnalyserRef.current();
+      cleanupAudioAnalyserRef.current = setupAudioAnalyser(stream, (hasSound) => {
+        setSpeechState(hasSound ? 'speech_detected' : 'sound_detected');
+      });
+
+      const mimeType = getSupportedAudioMimeType();
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      recorder.start(100);
+    } catch (err: any) {
+      setIsListening(false);
+      setVoiceStatus('⚠️ Could not access microphone. Please check browser microphone permissions.');
+    }
+  };
+
   const stopVoice = async () => {
     if (cleanupAudioAnalyserRef.current) {
       cleanupAudioAnalyserRef.current();
@@ -269,7 +305,7 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
     }
   };
 
-  // Start Live Speech Recognition (Google Keyboard style on Chromium, MediaRecorder + Web Audio on Firefox/Safari)
+  // Start Live Speech Recognition (Opera & non-Chromium use Gemini 3.6 Flash + Web Audio; Chrome uses Web Speech API)
   const toggleVoice = async () => {
     if (typeof window === 'undefined') return;
 
@@ -278,9 +314,10 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
       return;
     }
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const isOpera = isOperaOrNonChrome();
+    const SpeechRecognition = !isOpera && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
-    // PRIMARY PATH: Web Speech API for instantaneous live word-by-word streaming typing
+    // PRIMARY PATH: Web Speech API for Chromium (Chrome / Edge)
     if (SpeechRecognition) {
       try {
         if (recognitionRef.current) {
@@ -288,6 +325,7 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
           recognitionRef.current = null;
         }
 
+        let isSwitchingToMediaRecorder = false;
         const recognition = new SpeechRecognition();
         recognitionRef.current = recognition;
         recognition.lang = 'en-IN';
@@ -324,18 +362,20 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
 
         recognition.onerror = (event: any) => {
           console.warn('SpeechRecognition error:', event.error);
-          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          if (event.error === 'not-allowed') {
             setIsListening(false);
             setVoiceStatus('⚠️ Microphone permission blocked. Click the lock/settings icon in your browser URL bar to allow microphone.');
-          } else if (event.error === 'network') {
-            setIsListening(false);
-            setVoiceStatus('⚠️ Speech connection timeout. Tap mic to retry.');
+          } else {
+            // Opera, Brave, or network error: automatically switch to MediaRecorder engine
+            startMediaRecorderVoice();
           }
         };
 
         recognition.onend = () => {
-          setIsListening(false);
-          setSpeechState('idle');
+          if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
+            setIsListening(false);
+            setSpeechState('idle');
+          }
         };
 
         recognition.start();
@@ -345,35 +385,8 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
       }
     }
 
-    // UNIVERSAL FALLBACK: For non-Chromium browsers (Firefox, Safari, iOS)
-    try {
-      setIsListening(true);
-      setLiveTranscript('');
-      setSpeechState('listening');
-      setVoiceStatus('🎙️ Non-Chromium Mic active. Speak now, tap "Done ✓" when finished...');
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      audioChunksRef.current = [];
-
-      // Web Audio API volume feedback
-      if (cleanupAudioAnalyserRef.current) cleanupAudioAnalyserRef.current();
-      cleanupAudioAnalyserRef.current = setupAudioAnalyser(stream, (hasSound) => {
-        setSpeechState(hasSound ? 'speech_detected' : 'sound_detected');
-      });
-
-      const mimeType = getSupportedAudioMimeType();
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-      recorder.start(100);
-    } catch (err: any) {
-      setIsListening(false);
-      setVoiceStatus('⚠️ Could not access microphone. Please check browser microphone permissions.');
-    }
+    // UNIVERSAL NON-CHROMIUM & OPERA PATH
+    await startMediaRecorderVoice();
   };
 
   // Cleanup on unmount

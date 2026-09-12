@@ -29,7 +29,7 @@ import {
 } from '@/lib/parser/hybridParser';
 import { parseUniversalMessage } from '@/lib/parser/universalParser';
 import { QueryDesk } from '@/components/QueryDesk';
-import { transcribeAudio, getSupportedAudioMimeType, setupAudioAnalyser } from '@/lib/speech/audioTranscriber';
+import { transcribeAudio, getSupportedAudioMimeType, setupAudioAnalyser, isOperaOrNonChrome } from '@/lib/speech/audioTranscriber';
 import { StructuredJsonPage } from '@/pages/StructuredJsonPage';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { DayTracker, applyDayTheme } from '@/components/DayTracker';
@@ -919,6 +919,41 @@ function InboxPage({
   const streamRef = useRef<MediaStream | null>(null);
   const cleanupAudioAnalyserRef = useRef<(() => void) | null>(null);
 
+  const startMediaRecorderVoice = async () => {
+    try {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch {}
+        recognitionRef.current = null;
+      }
+
+      setIsListening(true);
+      setLiveTranscript('');
+      setSpeechState('listening');
+      setVoiceStatus('🎙️ Microphone active. Speak customer order, tap "Done ✓" when finished...');
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      audioChunksRef.current = [];
+
+      if (cleanupAudioAnalyserRef.current) cleanupAudioAnalyserRef.current();
+      cleanupAudioAnalyserRef.current = setupAudioAnalyser(stream, (hasSound) => {
+        setSpeechState(hasSound ? 'speech_detected' : 'sound_detected');
+      });
+
+      const mimeType = getSupportedAudioMimeType();
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      recorder.start(100);
+    } catch (err: any) {
+      setIsListening(false);
+      setVoiceStatus('⚠️ Could not access microphone. Please check browser permissions.');
+    }
+  };
+
   const stopVoice = async () => {
     if (cleanupAudioAnalyserRef.current) {
       cleanupAudioAnalyserRef.current();
@@ -990,7 +1025,8 @@ function InboxPage({
       return;
     }
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const isOpera = isOperaOrNonChrome();
+    const SpeechRecognition = !isOpera && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
     if (SpeechRecognition) {
       try {
@@ -999,6 +1035,7 @@ function InboxPage({
           recognitionRef.current = null;
         }
 
+        let isSwitchingToMediaRecorder = false;
         const recognition = new SpeechRecognition();
         recognitionRef.current = recognition;
         recognition.lang = 'en-IN';
@@ -1035,18 +1072,19 @@ function InboxPage({
 
         recognition.onerror = (event: any) => {
           console.warn('SpeechRecognition error:', event.error);
-          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          if (event.error === 'not-allowed') {
             setIsListening(false);
             setVoiceStatus('⚠️ Microphone permission blocked. Allow mic in browser settings.');
-          } else if (event.error === 'network') {
-            setIsListening(false);
-            setVoiceStatus('⚠️ Speech connection timeout. Tap mic to retry.');
+          } else {
+            startMediaRecorderVoice();
           }
         };
 
         recognition.onend = () => {
-          setIsListening(false);
-          setSpeechState('idle');
+          if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
+            setIsListening(false);
+            setSpeechState('idle');
+          }
         };
 
         recognition.start();
@@ -1056,34 +1094,8 @@ function InboxPage({
       }
     }
 
-    // UNIVERSAL FALLBACK: Firefox, Safari, iOS
-    try {
-      setIsListening(true);
-      setLiveTranscript('');
-      setSpeechState('listening');
-      setVoiceStatus('🎙️ Non-Chromium Mic active. Speak order now, tap "Done ✓" when finished...');
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      audioChunksRef.current = [];
-
-      if (cleanupAudioAnalyserRef.current) cleanupAudioAnalyserRef.current();
-      cleanupAudioAnalyserRef.current = setupAudioAnalyser(stream, (hasSound) => {
-        setSpeechState(hasSound ? 'speech_detected' : 'sound_detected');
-      });
-
-      const mimeType = getSupportedAudioMimeType();
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-      recorder.start(100);
-    } catch (err: any) {
-      setIsListening(false);
-      setVoiceStatus('⚠️ Could not access microphone. Please check browser permissions.');
-    }
+    // UNIVERSAL NON-CHROMIUM & OPERA PATH
+    await startMediaRecorderVoice();
   };
 
   useEffect(() => {
