@@ -624,6 +624,24 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
                 <span className="minor">Automatically parsed with {((status.debounceMs || 8000) / 1000).toFixed(0)}s multi-turn debouncing</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    fontSize: 11,
+                    padding: '3px 8px',
+                    borderRadius: 6,
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                    color: '#60A5FA',
+                    fontWeight: 600,
+                  }}
+                  title="Hybrid Mode: Online AI is prioritized, automatically falling back to Sovereign Local Engine when offline"
+                >
+                  <Sparkles size={11} />
+                  <span>Hybrid Engine: Online AI + Offline Fallback</span>
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                   <label htmlFor="debounce-select" style={{ color: 'hsl(var(--muted-foreground))' }}>Burst Buffer:</label>
                   <select
@@ -703,6 +721,24 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                padding: '3px 9px',
+                                borderRadius: 6,
+                                fontWeight: 600,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                background: (msg.parserUsed || '').includes('Online') ? 'rgba(168, 85, 247, 0.2)' : 'rgba(16, 185, 129, 0.15)',
+                                color: (msg.parserUsed || '').includes('Online') ? '#C084FC' : '#10B981',
+                                border: (msg.parserUsed || '').includes('Online') ? '1px solid rgba(168, 85, 247, 0.35)' : '1px solid rgba(16, 185, 129, 0.3)',
+                              }}
+                              title="Indicates whether this message was extracted via Online AI or Sovereign On-Device NLP"
+                            >
+                              {(msg.parserUsed || '').includes('Online') ? <Sparkles size={12} /> : <ShieldCheck size={12} />}
+                              {msg.parserUsed || 'Sovereign Local Engine'}
+                            </span>
                             <span
                               style={{
                                 fontSize: 11,
