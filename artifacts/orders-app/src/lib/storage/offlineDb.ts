@@ -378,6 +378,23 @@ export class OfflineStorage {
     return order;
   }
 
+  static async bulkUpsertOrders(newOrders: Order[]): Promise<Order[]> {
+    this.cachedOrders = [...newOrders];
+    this.saveBackupLocally();
+
+    try {
+      const db = await openIndexedDB();
+      const tx = db.transaction(STORE_ORDERS, 'readwrite');
+      const store = tx.objectStore(STORE_ORDERS);
+      for (const ord of newOrders) {
+        store.put(ord);
+      }
+    } catch (e) {
+      console.warn('IndexedDB bulk save failed:', e);
+    }
+    return this.cachedOrders;
+  }
+
   static async deleteOrder(orderId: string): Promise<boolean> {
     const orders = this.getOrdersSync().filter((o) => o.id !== orderId);
     this.cachedOrders = orders;

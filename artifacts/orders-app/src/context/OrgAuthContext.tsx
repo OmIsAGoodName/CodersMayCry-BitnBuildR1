@@ -1,5 +1,6 @@
 ﻿import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase, CloudOrganization } from '@/lib/supabase';
+import { syncStoreOrders } from '@/lib/sync/offlineSyncManager';
 import { AppUser, getCurrentUser, logoutUser } from '@/lib/auth/userAuth';
 import { User, Session } from '@supabase/supabase-js';
 
@@ -343,6 +344,12 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
   };
 
   const syncNow = async () => {
+    if (activeOrgId) {
+      await syncStoreOrders(activeOrgId);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('vendora:sync-complete'));
+      }
+    }
     setLastSyncedAt(new Date());
   };
 

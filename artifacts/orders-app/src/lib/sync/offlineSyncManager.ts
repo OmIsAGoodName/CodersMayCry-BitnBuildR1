@@ -1,5 +1,5 @@
-﻿import { supabase, CloudOrder } from '@/lib/supabase';
-import { Order } from '@/lib/types';
+import { supabase, CloudOrder } from '@/lib/supabase';
+import { Order, OfflineStorage } from '@/lib/storage/offlineDb';
 
 export interface PendingMutation {
   id: string;
@@ -32,7 +32,7 @@ export function enqueueMutation(action: 'upsert' | 'delete', orderId: string, pa
   // Deduplicate existing pending action for the same order
   const filtered = queue.filter((m) => m.orderId !== orderId);
   filtered.push({
-    id: mut__,
+    id: 'mut_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
     orderId,
     action,
     payload,
@@ -53,17 +53,17 @@ export function orderToCloud(order: Order, orgId: string, updatedBy = 'operator'
     org_id: orgId,
     customer: order.customer || '',
     phone: order.phone || '',
-    amount: order.amount || 0,
-    paid_amount: order.paidAmount || 0,
-    due_date: order.dueDate,
-    status: order.status,
-    items: order.items || [],
-    notes: order.notes || '',
+    amount: Number(order.amount) || 0,
+    paid_amount: Number(order.paidAmount) || 0,
+    due_date: order.dueDate || new Date().toISOString().slice(0, 10),
+    status: order.status || 'new',
+    items: Array.isArray(order.items) ? order.items : [],
+    notes: (order as any).notes || (order.rawMessage ? ('[Voice/Chat Intake]: ' + order.rawMessage) : ''),
     needs_clarification: order.needsClarification || false,
-    source: order.source || 'counter',
-    created_at: order.createdAt,
+    source: (order as any).source || 'counter',
+    created_at: order.createdAt || new Date().toISOString(),
     updated_at: order.updatedAt || new Date().toISOString(),
-    version: (order.version || 1) + 1,
+    version: Number(order.version || 1),
     updated_by: updatedBy,
   };
 }
@@ -76,22 +76,25 @@ export function cloudToOrder(cloud: any): Order {
     phone: cloud.phone || '',
     amount: Number(cloud.amount) || 0,
     paidAmount: Number(cloud.paid_amount) || 0,
-    dueDate: cloud.due_date,
-    status: cloud.status,
-    items: Array.isArray(cloud.items) ? cloud.items : [],
-    notes: cloud.notes || '',
+    dueDate: cloud.due_date || new Date().toISOString().slice(0, 10),
+    status: (cloud.status || 'new') as any,
+    items: Array.isArray(cloud.items) ? cloud.items : [{ description: 'Order Item', quantity: 1, attributes: {} }],
+    referencesPriorOrder: false,
+    confidence: 1,
     needsClarification: Boolean(cloud.needs_clarification),
-    source: cloud.source || 'counter',
+    rawMessage: cloud.notes || '',
     createdAt: cloud.created_at || new Date().toISOString(),
     updatedAt: cloud.updated_at || new Date().toISOString(),
     version: Number(cloud.version) || 1,
-    history: [],
+    deviceId: 'cloud-sync',
+    pendingSync: false,
+    fieldHlc: {},
   };
 }
 
 // Flush pending offline mutations to Supabase
 export async function flushPendingMutations(orgId: string): Promise<number> {
-  if (!navigator.onLine) return 0;
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return 0;
   const queue = getPendingQueue();
   if (queue.length === 0) return 0;
 
@@ -106,6 +109,7 @@ export async function flushPendingMutations(orgId: string): Promise<number> {
         if (!error) {
           synced++;
         } else {
+          console.warn('Upsert error in flush:', error);
           remaining.push(mut);
         }
       } else if (mut.action === 'delete') {
@@ -116,7 +120,8 @@ export async function flushPendingMutations(orgId: string): Promise<number> {
           remaining.push(mut);
         }
       }
-    } catch {
+    } catch (e) {
+      console.warn('Mutation execution error:', e);
       remaining.push(mut);
     }
   }
@@ -125,9 +130,9 @@ export async function flushPendingMutations(orgId: string): Promise<number> {
   return synced;
 }
 
-// Pull latest changes from Supabase and merge
+// Pull latest changes from Supabase
 export async function pullCloudOrders(orgId: string): Promise<Order[] | null> {
-  if (!navigator.onLine) return null;
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return null;
 
   try {
     const { data, error } = await supabase
@@ -149,4 +154,61 @@ export async function pullCloudOrders(orgId: string): Promise<Order[] | null> {
   }
 
   return null;
+}
+
+// Bi-directional sync: flush mutations, pull latest, merge, and save to local storage
+export async function syncStoreOrders(orgId: string, localOrders?: Order[]): Promise<Order[] | null> {
+  if (!orgId) return null;
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return null;
+
+  try {
+    // 1. Flush any queued offline actions
+    await flushPendingMutations(orgId);
+
+    // 2. Fetch all cloud orders for this store
+    const cloudOrders = await pullCloudOrders(orgId);
+    if (!cloudOrders) return null;
+
+    // 3. Merge cloud orders with local orders (conflict resolution by updatedAt / version)
+    const local = localOrders || OfflineStorage.getOrdersSync();
+    const mergedMap = new Map<string, Order>();
+
+    // Put all cloud orders in map
+    for (const co of cloudOrders) {
+      mergedMap.set(co.id, co);
+    }
+
+    // For any local order not yet in cloud or newer than cloud, keep local and push to cloud
+    for (const lo of local) {
+      const co = mergedMap.get(lo.id);
+      if (!co) {
+        // Local order hasn't synced to cloud yet -> push to cloud
+        mergedMap.set(lo.id, lo);
+        try {
+          await supabase.from('orders').upsert(orderToCloud(lo, orgId));
+        } catch {}
+      } else {
+        // Both exist: choose latest timestamp
+        const loTime = new Date(lo.updatedAt || lo.createdAt || 0).getTime();
+        const coTime = new Date(co.updatedAt || co.createdAt || 0).getTime();
+        if (loTime > coTime) {
+          mergedMap.set(lo.id, lo);
+          try {
+            await supabase.from('orders').upsert(orderToCloud(lo, orgId));
+          } catch {}
+        }
+      }
+    }
+
+    const mergedList = Array.from(mergedMap.values()).sort((a, b) => {
+      return new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime();
+    });
+
+    // Persist to IndexedDB & LocalStorage
+    await OfflineStorage.bulkUpsertOrders(mergedList);
+    return mergedList;
+  } catch (err) {
+    console.warn('Sync store orders failed:', err);
+    return null;
+  }
 }

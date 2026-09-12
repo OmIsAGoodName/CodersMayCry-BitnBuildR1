@@ -2,7 +2,7 @@ import { OrgAuthProvider, useOrgAuth } from '@/context/OrgAuthContext';
 import { OrgHeader } from '@/components/OrgHeader';
 import { TeamManagementPage } from '@/pages/TeamManagementPage';
 import { supabase } from '@/lib/supabase';
-import { enqueueMutation, flushPendingMutations, pullCloudOrders, cloudToOrder } from '@/lib/sync/offlineSyncManager';
+import { enqueueMutation, flushPendingMutations, pullCloudOrders, cloudToOrder, syncStoreOrders, orderToCloud, clearPendingMutation } from '@/lib/sync/offlineSyncManager';
 import { Users as UsersIcon } from 'lucide-react';
 import { type ReactNode, useEffect, useState, useTransition } from 'react';
 import { Link, Route, Switch, useLocation } from 'wouter';
@@ -1980,6 +1980,85 @@ function App() {
     };
   }, []);
 
+  // 1. Cloud Hydration on Startup / Login / Org Switch
+  useEffect(() => {
+    if (!loaded || !organization?.id) return;
+    let isCurrent = true;
+
+    syncStoreOrders(organization.id).then((merged) => {
+      if (isCurrent && merged && merged.length > 0) {
+        setOrders(merged);
+      }
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [loaded, organization?.id]);
+
+  // 2. Live Supabase Realtime Channel: Cross-device multi-device sync
+  useEffect(() => {
+    if (!loaded || !organization?.id) return;
+
+    const channelName = 'org-orders-realtime-' + organization.id;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: 'org_id=eq.' + organization.id,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const incoming = cloudToOrder(payload.new);
+            setOrders((prev) => {
+              const exists = prev.some((o) => o.id === incoming.id);
+              const next = exists ? prev.map((o) => (o.id === incoming.id ? incoming : o)) : [incoming, ...prev];
+              OfflineStorage.bulkUpsertOrders(next);
+              return next;
+            });
+            notify(payload.eventType === 'INSERT' ? '⚡ New order received from another device' : '⚡ Order updated from cloud');
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old?.id;
+            if (deletedId) {
+              setOrders((prev) => {
+                const next = prev.filter((o) => o.id !== deletedId);
+                OfflineStorage.bulkUpsertOrders(next);
+                return next;
+              });
+              notify('⚡ Order removed from another device');
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loaded, organization?.id]);
+
+  // 3. Auto-sync on window focus or custom sync event
+  useEffect(() => {
+    const handleSync = () => {
+      if (navigator.onLine && organization?.id) {
+        syncStoreOrders(organization.id).then((merged) => {
+          if (merged && merged.length > 0) setOrders(merged);
+        });
+      }
+    };
+
+    window.addEventListener('focus', handleSync);
+    window.addEventListener('vendora:sync-complete', handleSync);
+    return () => {
+      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('vendora:sync-complete', handleSync);
+    };
+  }, [organization?.id]);
+
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(''), 3000);
@@ -2024,12 +2103,23 @@ function App() {
     setEditing(undefined);
     notify(existing ? 'Order updated locally' : 'Order saved to sovereign ledger');
 
-    // Cloud sync to Supabase
-    enqueueMutation('upsert', nextOrder.id, nextOrder);
-    if (navigator.onLine) {
-      organization?.id && flushPendingMutations(organization.id).then((count) => {
-        if (count > 0) notify('Backed up to Supabase Cloud');
-      });
+    // Instant Realtime Cloud Sync to Supabase & All Devices
+    if (navigator.onLine && organization?.id) {
+      const cloudRecord = orderToCloud(nextOrder, organization.id, currentMember?.name || currentUser?.fullName || 'Operator');
+      supabase
+        .from('orders')
+        .upsert(cloudRecord)
+        .then(({ error }) => {
+          if (error) {
+            console.warn('Direct cloud upsert failed, queued:', error);
+            enqueueMutation('upsert', nextOrder.id, nextOrder);
+          } else {
+            clearPendingMutation(nextOrder.id);
+            setOrders((prev) => prev.map((o) => (o.id === nextOrder.id ? { ...o, pendingSync: false } : o)));
+          }
+        });
+    } else {
+      enqueueMutation('upsert', nextOrder.id, nextOrder);
     }
   };
 
@@ -2041,9 +2131,21 @@ function App() {
     notify('Order deleted from local ledger');
 
     // Cloud delete from Supabase
-    enqueueMutation('delete', orderId);
     if (navigator.onLine && organization?.id) {
-      flushPendingMutations(organization.id);
+      supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId)
+        .eq('org_id', organization.id)
+        .then(({ error }) => {
+          if (error) {
+            enqueueMutation('delete', orderId);
+          } else {
+            clearPendingMutation(orderId);
+          }
+        });
+    } else {
+      enqueueMutation('delete', orderId);
     }
   };
 
