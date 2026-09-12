@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Mono:wght@400;700&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 
 :root {
@@ -27,9 +27,9 @@
   --sidebar-accent: 220 20% 12%;
   --sidebar-accent-foreground: 210 40% 98%;
   --radius: 12px;
-  --app-font-sans: 'DM Sans', sans-serif;
-  --app-font-serif: 'Fraunces', serif;
-  --app-font-mono: 'Space Mono', 'Segoe UI Symbol', 'Consolas', monospace;
+  --app-font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --app-font-serif: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  --app-font-mono: 'Plus Jakarta Sans', 'Inter', sans-serif;
 
   /* Default Solid Day Theme (Friday - Electric Cobalt) */
   --day-accent: #0284C7;
@@ -235,10 +235,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 .page { max-width: 1260px; margin: 0 auto; padding: 28px 38px 74px; }
 .page-heading { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 22px; }
-.eyebrow { font: 10px var(--app-font-mono); text-transform: uppercase; letter-spacing: 0.1em; color: var(--day-accent); font-weight: 700; }
+.eyebrow { font-family: var(--app-font-sans); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--day-accent); font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
 h1, h2, h3, p { margin: 0; }
-h1 { font-family: var(--app-font-serif); font-size: clamp(28px, 3.5vw, 40px); letter-spacing: -0.04em; color: #fff; }
-h2 { font-family: var(--app-font-serif); font-size: 22px; letter-spacing: -0.04em; color: #fff; }
+h1 { font-family: var(--app-font-sans); font-size: clamp(24px, 3vw, 34px); font-weight: 700; letter-spacing: -0.02em; color: #fff; line-height: 1.25; }
+h2 { font-family: var(--app-font-sans); font-size: 19px; font-weight: 600; letter-spacing: -0.015em; color: #fff; line-height: 1.3; }
 h3 { font-size: 15px; color: #fff; }
 .subheading { color: #94a3b8; font-size: 14px; margin-top: 6px; line-height: 1.5; }
 
@@ -310,7 +310,7 @@ h3 { font-size: 15px; color: #fff; }
   gap: 5px;
   font-weight: 700;
 }
-.day-main-heading { font-family: var(--app-font-serif); font-size: 26px; letter-spacing: -0.03em; color: #fff; line-height: 1.15; }
+.day-main-heading { font-family: var(--app-font-sans); font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: #fff; line-height: 1.2; }
 .day-indic-tag { font-size: 16px; font-weight: 500; color: #94a3b8; font-family: var(--app-font-sans); }
 .day-tagline { font-size: 13px; color: #94a3b8; margin: 0; }
 .day-meta-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -418,7 +418,7 @@ h3 { font-size: 15px; color: #fff; }
 .stat-card.featured h3, .stat-card.featured .stat-value { color: #fff; }
 .stat-card.featured .stat-label { color: #cbd5e1; }
 .stat-label { color: #94a3b8; font: 10px var(--app-font-mono); text-transform: uppercase; letter-spacing: 0.1em; }
-.stat-value { font: 700 32px var(--app-font-serif); letter-spacing: -0.04em; color: #fff; margin-top: 6px; line-height: 1; }
+.stat-value { font: 700 28px var(--app-font-sans); letter-spacing: -0.02em; color: #fff; margin-top: 6px; line-height: 1; }
 .stat-meta { font-size: 12px; margin-top: 6px; color: #94a3b8; }
 .featured .stat-meta { color: #cbd5e1; }
 .stat-icon { position: absolute; right: 18px; top: 18px; opacity: 0.25; color: var(--day-accent); }
@@ -631,9 +631,9 @@ h3 { font-size: 15px; color: #fff; }
 .filter-tab:hover { background: #18202d; color: #fff; }
 .filter-tab.selected { background: var(--day-accent); color: #fff; border-color: var(--day-accent); font-weight: 700; }
 
-.table-panel { padding: 0 8px 10px; }
-.table-head, .table-row { display: grid; grid-template-columns: 1.55fr 1.3fr .82fr .8fr 90px; gap: 12px; align-items: center; padding: 12px 10px; }
-.table-head { font: 10px var(--app-font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; border-bottom: 1px solid #1c2331; }
+.table-panel { padding: 4px 8px 12px; border-radius: 12px; background: rgba(18, 24, 38, 0.6); border: 1px solid rgba(255, 255, 255, 0.07); margin-top: 4px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); }
+.table-head, .table-row { display: grid; grid-template-columns: 1.55fr 1.3fr .85fr .8fr 95px; gap: 16px; align-items: center; padding: 14px 16px; }
+.table-head { font-family: var(--app-font-sans); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: #94a3b8; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding: 14px 16px; }
 .table-row { border-bottom: 1px solid #1c2331; min-height: 64px; font-size: 12px; transition: background 0.12s; width: 100%; border-left: 0; border-right: 0; border-top: 0; background: transparent; text-align: left; }
 .table-row:hover { background: #18202d; }
 .table-row:last-child { border-bottom: 0; }
@@ -641,7 +641,7 @@ h3 { font-size: 15px; color: #fff; }
 .customer-cell strong { display: block; color: #fff; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .customer-cell small { display: block; color: #94a3b8; font-size: 11px; margin-top: 2px; }
 .cell-muted { color: #94a3b8; font-size: 12px; }
-.money { font: 12px var(--app-font-mono); color: #fff; font-weight: 700; }
+.money { font-family: var(--app-font-sans); font-size: 13px; color: #f1f5f9; font-weight: 700; letter-spacing: -0.01em; }
 .money.due { color: #EF4444; }
 
 .empty { padding: 40px 20px; text-align: center; color: #64748b; }
@@ -1722,4 +1722,150 @@ h3 { font-size: 15px; color: #fff; }
     max-width: calc(100vw - 20px) !important;
     padding: 16px 14px;
   }
+}
+
+
+/* ======================================================
+   Spacious Modern Ledger Toolbar & Filter Pills
+   ====================================================== */
+.orders-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.orders-search-box {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.orders-search-icon {
+  position: absolute;
+  left: 14px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+.orders-search-input {
+  width: 100%;
+  background: #0d121c;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px 36px 12px 42px;
+  color: #fff;
+  font-family: var(--app-font-sans);
+  font-size: 13.5px;
+  transition: all 0.18s ease;
+}
+
+.orders-search-input:focus {
+  outline: none;
+  border-color: var(--day-accent);
+  background: #111724;
+  box-shadow: 0 0 0 3px rgba(var(--day-accent-rgb), 0.15);
+}
+
+.orders-search-clear {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 13px;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+.orders-search-clear:hover {
+  color: #fff;
+}
+
+.orders-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 16px;
+  border-radius: 10px;
+  font-family: var(--app-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+.orders-reset-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* Filter Pills with Counts */
+.filter-tabs-row {
+  margin-bottom: 20px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+}
+
+.filter-tabs-scroll {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0e131e;
+  color: #94a3b8;
+  font-family: var(--app-font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.filter-pill:hover {
+  background: #151d2c;
+  color: #f1f5f9;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.filter-pill.active {
+  background: var(--day-accent);
+  color: #fff;
+  border-color: var(--day-accent);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(var(--day-accent-rgb), 0.35);
+}
+
+.filter-pill-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+
+.filter-pill.active .filter-pill-count {
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
 }

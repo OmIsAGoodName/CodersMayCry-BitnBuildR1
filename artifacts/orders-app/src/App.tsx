@@ -788,39 +788,59 @@ function OrdersPage({
         }
       />
 
-      <div className="search-row">
-        <div className="input-wrap">
-          <Search />
+      <div className="orders-toolbar">
+        <div className="orders-search-box">
+          <Search className="orders-search-icon" size={17} />
           <input
-            className="input"
+            className="orders-search-input"
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search customer name, phone, item, or attributes..."
+            placeholder="Search customer name, phone, item description, notes..."
             aria-label="Search orders"
             data-testid="input-search-orders"
           />
+          {query && (
+            <button
+              type="button"
+              className="orders-search-clear"
+              onClick={() => setQuery('')}
+              title="Clear search"
+            >
+              ✕
+            </button>
+          )}
         </div>
-        <button
-          className="btn btn-quiet"
-          onClick={() => { setQuery(''); setFilter('all'); }}
-          data-testid="button-clear-filters"
-        >
-          <RotateCcw /> Reset
-        </button>
+        {(query || filter !== 'all') && (
+          <button
+            type="button"
+            className="orders-reset-btn"
+            onClick={() => { setQuery(''); setFilter('all'); }}
+            data-testid="button-clear-filters"
+          >
+            <RotateCcw size={14} /> Reset
+          </button>
+        )}
       </div>
 
-      <div className="filter-tabs" style={{ marginBottom: 18 }}>
-        {STATUS_FILTERS.map((key) => (
-          <button
-            key={key}
-            className={`filter-tab ${filter === key ? 'selected' : ''}`}
-            onClick={() => setFilter(key)}
-            data-testid={`filter-orders-${key}`}
-          >
-            {key === 'all' ? 'All Orders' : STATUS_LABEL[key]}
-          </button>
-        ))}
+      <div className="filter-tabs-row">
+        <div className="filter-tabs-scroll">
+          {STATUS_FILTERS.map((key) => {
+            const count = key === 'all' ? orders.length : orders.filter((o) => o.status === key).length;
+            return (
+              <button
+                key={key}
+                type="button"
+                className={`filter-pill ${filter === key ? 'active' : ''}`}
+                onClick={() => setFilter(key)}
+                data-testid={`filter-orders-${key}`}
+              >
+                <span>{key === 'all' ? 'All Orders' : STATUS_LABEL[key]}</span>
+                <span className="filter-pill-count">{count}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <section className="panel table-panel">
