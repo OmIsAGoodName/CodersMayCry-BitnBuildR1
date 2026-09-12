@@ -41,6 +41,20 @@ export default defineConfig({
     {
       name: 'vendora-ai-proxy',
       configureServer(server) {
+        server.middlewares.use(async (req, res, next) => {
+          if (req.url && req.url.startsWith('/api/whatsapp')) {
+            try {
+              const { handleWhatsAppHttpRequest } = await import('../../scripts/whatsapp-bridge.mjs');
+              return handleWhatsAppHttpRequest(req, res, next);
+            } catch (err) {
+              console.error('WhatsApp bridge middleware error:', err);
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: err.message }));
+              return;
+            }
+          }
+          next();
+        });
         server.middlewares.use('/api/ai/parse', async (req, res) => {
           if (req.method !== 'POST') {
             res.statusCode = 405;

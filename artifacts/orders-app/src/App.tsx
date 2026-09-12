@@ -10,7 +10,7 @@ import { type ReactNode, useEffect, useState, useRef, useTransition } from 'reac
 import { Link, Route, Switch, useLocation } from 'wouter';
 import {
   Sun, Moon, AlertTriangle, ArrowRight, BarChart3, CalendarDays, Check, CheckCircle2, ClipboardList,
-  CloudOff, Database, Download, FileJson, Filter, Home, Inbox, IndianRupee,
+  CloudOff, Database, Download, FileJson, Filter, Home, Inbox, IndianRupee, MessageSquare,
   Layers3, MoreHorizontal, Plus, RefreshCw, RotateCcw, Search, Mic, MicOff, Settings as SettingsIcon,
   Sparkles, Trash2, Upload, Wifi, WifiOff, X, Zap, Cpu, Play, Key, SlidersHorizontal, Copy, User,
   Menu, ArrowLeft, LogOut
@@ -36,6 +36,7 @@ import { transcribeAudio, getSupportedAudioMimeType, setupAudioAnalyser, isOpera
 import { applyDayTheme } from '@/components/DayTracker';
 import { BrandLogo } from '@/components/BrandLogo';
 import { AuthScreen } from '@/components/AuthScreen';
+import { WhatsAppDesk } from '@/components/WhatsAppDesk';
 
 const queryClient = new QueryClient();
 const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -149,6 +150,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
     { href: '/', label: 'Workbench', icon: Home },
     { href: '/orders', label: 'Ledger', icon: ClipboardList },
     { href: '/inbox', label: 'Universal Inbox', icon: Inbox },
+    { href: '/whatsapp', label: 'WhatsApp Live Desk', icon: MessageSquare },
     { href: '/employees', label: 'Employees', icon: UsersIcon },
     { href: '/query', label: 'Query Desk', icon: BarChart3 },
     { href: '/settings', label: 'Settings', icon: SettingsIcon },
@@ -2064,6 +2066,9 @@ function App() {
             onSave={saveOrder}
             onNotify={notify}
           />
+        </Route>
+        <Route path="/whatsapp">
+          <WhatsAppDesk onSaveOrder={saveOrder} onNotify={notify} />
         </Route>
         <Route path="/employees">
           <EmployeesPage />

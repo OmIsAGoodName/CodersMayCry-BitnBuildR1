@@ -60,3 +60,5 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+.whatsapp_auth/

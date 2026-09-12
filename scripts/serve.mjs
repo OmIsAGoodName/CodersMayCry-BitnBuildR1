@@ -36,7 +36,19 @@ const MIME_TYPES = {
   '.ttf': 'font/ttf',
 };
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
+  if (req.url && req.url.startsWith('/api/whatsapp')) {
+    try {
+      const { handleWhatsAppHttpRequest } = await import('./whatsapp-bridge.mjs');
+      handleWhatsAppHttpRequest(req, res);
+      return;
+    } catch (err) {
+      console.error('WhatsApp bridge serve error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+      return;
+    }
+  }
   let reqPath = decodeURI(req.url.split('?')[0]);
   if (reqPath === '/') reqPath = '/index.html';
 
