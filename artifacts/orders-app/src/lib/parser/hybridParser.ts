@@ -337,6 +337,73 @@ Return ONLY valid JSON matching this schema:
         };
       } catch {}
     }
+
+    // Automatic failover to Groq when Gemini hits 429 rate limit or is unavailable
+    if (!rawJson) {
+      const groqKey = getSavedProviderKeys().groq || FALLBACK_GROQ_KEY;
+      if (groqKey && groqKey.length > 5) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+          const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${groqKey}`,
+            },
+            body: JSON.stringify({
+              model: 'qwen/qwen3.8-27b',
+              max_tokens: 450,
+              temperature: 0.1,
+              response_format: { type: 'json_object' },
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: `Parse this customer WhatsApp message into structured order JSON:\n${text}` },
+              ],
+            }),
+            signal: controller.signal,
+          }).finally(() => clearTimeout(timeoutId));
+
+          if (groqRes.ok) {
+            const data = await groqRes.json();
+            const content = data.choices?.[0]?.message?.content;
+            if (content) {
+              const parsed = JSON.parse(content);
+              const speedMs = Date.now() - startTime;
+
+              const standardized: StandardParsedOrder = {
+                customer: typeof parsed.customer === 'string' && parsed.customer.trim() ? parsed.customer.trim() : null,
+                items: Array.isArray(parsed.items) && parsed.items.length > 0
+                  ? parsed.items.map((it: Record<string, unknown>) => ({
+                      description: String(it.description || 'Customer order'),
+                      quantity: typeof it.quantity === 'number' ? Math.max(1, it.quantity) : 1,
+                      attributes: typeof it.attributes === 'object' && it.attributes ? (it.attributes as Record<string, string>) : {},
+                    }))
+                  : [{ description: 'Customer order', quantity: 1, attributes: {} }],
+                due_date: typeof parsed.due_date === 'string' && parsed.due_date ? parsed.due_date : null,
+                amount: typeof parsed.amount === 'number' ? parsed.amount : (parseFloat(String(parsed.amount)) || null),
+                references_prior_order: Boolean(parsed.references_prior_order),
+                confidence: typeof parsed.confidence === 'number' ? Math.max(0.1, Math.min(1.0, parsed.confidence)) : 0.95,
+                needs_clarification: Boolean(parsed.needs_clarification),
+              };
+
+              return {
+                ...standardized,
+                _source: 'online_ai',
+                _domain: domain,
+                _speedMs: speedMs,
+                _providerNote: 'Groq AI (Gemini 429 Quota Fallback)',
+                _modelUsed: 'Groq Qwen 3.8 (Gemini 429 Failover)',
+                _apiError: 'Gemini Quota Reached (HTTP 429: 20 req/day limit) → Automatically Fallen Back to Groq High-Speed AI!',
+              };
+            }
+          }
+        } catch (groqErr) {
+          console.warn('Groq automatic failover failed:', groqErr);
+        }
+      }
+    }
   } else if (selectedModel.provider === 'openai' || selectedModel.provider === 'groq' || selectedModel.provider === 'openrouter') {
     // 2. OpenAI / Groq / OpenRouter Provider
     const cleanKey = apiKey.trim().replace(/^["']|["']$/g, '');
@@ -356,6 +423,7 @@ Return ONLY valid JSON matching this schema:
         },
         body: JSON.stringify({
           model: selectedModel.modelName,
+          max_tokens: 450,
           temperature: 0.1,
           response_format: { type: 'json_object' },
           messages: [

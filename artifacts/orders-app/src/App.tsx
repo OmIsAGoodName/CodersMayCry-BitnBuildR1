@@ -1150,7 +1150,11 @@ function InboxPage({
       });
       setParsed(result);
       if (result._source === 'online_ai') {
-        onNotify(`✨ Parsed with ${result._providerNote} in ${result._speedMs}ms`);
+        if (result._apiError?.includes('429') || result._providerNote?.includes('Fallback')) {
+          onNotify(`⚡ Gemini Quota Reached (429) → Automatically Fallen Back to Groq! (${result._speedMs}ms)`);
+        } else {
+          onNotify(`⚡ Parsed with ${result._providerNote} in ${result._speedMs}ms`);
+        }
       } else {
         onNotify(`⚡ Parsed with Local Deterministic Engine in ${result._speedMs}ms`);
       }
