@@ -177,12 +177,13 @@ export function extractCustomerName(rawText) {
 
 
 export async function tryOnlineParse(rawMessage, senderName = null, baseDate = new Date()) {
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
-  const groqKey = process.env.GROQ_API_KEY || '';
-  const openaiKey = process.env.OPENAI_API_KEY || '';
+  const geminiKey = (process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '').trim();
+  const groqKey = (process.env.GROQ_API_KEY || '').trim();
+  const openaiKey = (process.env.OPENAI_API_KEY || '').trim();
+  const openrouterKey = (process.env.OPENROUTER_API_KEY || '').trim();
 
   // 1. Try Groq Llama 3.3
-  if (groqKey) {
+  if (groqKey && groqKey.length > 5) {
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -190,7 +191,7 @@ export async function tryOnlineParse(rawMessage, senderName = null, baseDate = n
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile',
           messages: [
-            { role: 'system', content: 'Parse colloquial Indian order to JSON: { customer, items: [{ description, quantity, attributes }], due_date (YYYY-MM-DD), amount (number), paidAmount (number), confidence (0.0 to 1.0) }' },
+            { role: 'system', content: 'Extract structured Indian order as JSON: { customer: string, items: [{ description: string, quantity: number, attributes: object }], due_date: string (YYYY-MM-DD), amount: number, paidAmount: number, confidence: number }' },
             { role: 'user', content: rawMessage }
           ],
           response_format: { type: 'json_object' }
@@ -200,29 +201,58 @@ export async function tryOnlineParse(rawMessage, senderName = null, baseDate = n
         const data = await res.json();
         const content = JSON.parse(data.choices[0].message.content);
         return { parsed: content, parserUsed: 'Online AI (Groq Llama 3.3)' };
+      } else {
+        console.warn('[Groq AI Error]:', res.status, await res.text());
       }
-    } catch {}
+    } catch (e) {
+      console.warn('[Groq AI Network Error]:', e.message);
+    }
   }
 
   // 2. Try Gemini
-  if (geminiKey && geminiKey.startsWith('AIzaSy')) {
+  if (geminiKey && geminiKey.length > 5) {
+    for (const model of ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash']) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `Extract structured order details as JSON: { customer: string, items: [{ description: string, quantity: number, attributes: object }], due_date: string (YYYY-MM-DD or null), amount: number, paidAmount: number, confidence: number }\nOrder message: "${rawMessage}"` }] }],
+            generationConfig: { responseMimeType: 'application/json' }
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) {
+            const content = JSON.parse(text);
+            return { parsed: content, parserUsed: `Online AI (${model})` };
+          }
+        }
+      } catch {}
+    }
+  }
+
+  // 3. Try OpenAI
+  if (openaiKey && openaiKey.length > 5) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
-      const res = await fetch(url, {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: `Extract structured order details as JSON: { customer: string, items: [{ description: string, quantity: number, attributes: object }], due_date: string (YYYY-MM-DD or null), amount: number, paidAmount: number, confidence: number }\nOrder message: "${rawMessage}"` }] }],
-          generationConfig: { responseMimeType: 'application/json' }
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'Extract structured Indian order as JSON: { customer: string, items: [{ description: string, quantity: number, attributes: object }], due_date: string (YYYY-MM-DD or null), amount: number, paidAmount: number, confidence: number }' },
+            { role: 'user', content: rawMessage }
+          ],
+          response_format: { type: 'json_object' }
         })
       });
       if (res.ok) {
         const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          const content = JSON.parse(text);
-          return { parsed: content, parserUsed: 'Online AI (Gemini 1.5 Flash)' };
-        }
+        const content = JSON.parse(data.choices[0].message.content);
+        return { parsed: content, parserUsed: 'Online AI (GPT-4o Mini)' };
       }
     } catch {}
   }
