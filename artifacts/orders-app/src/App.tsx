@@ -2519,8 +2519,11 @@ function App() {
         <Route path="/structured-json">
           <StructuredJsonPage onSaveOrder={saveOrder} onNotify={notify} />
         </Route>
-                <Route path="/team">
-          <TeamManagementPage />
+        <Route path="/employees">
+          <EmployeesPage />
+        </Route>
+        <Route path="/team">
+          <EmployeesPage />
         </Route>
         <Route path="/query">
           <div className="page">
