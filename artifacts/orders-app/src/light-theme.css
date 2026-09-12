@@ -402,3 +402,27 @@ body.theme-light {
   border-bottom: 1px solid #e2e6ed !important;
 }
 [data-theme="light"] .matrix-row strong { color: #0f172a !important; }
+
+
+/* Light Theme Settings Card & Rows */
+[data-theme="light"] .settings-card {
+  background: #ffffff !important;
+  border: 1px solid #cbd1dc !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+[data-theme="light"] .settings-card h3 {
+  color: #0f172a !important;
+}
+[data-theme="light"] .settings-card p,
+[data-theme="light"] .settings-card .setting-desc {
+  color: #64748b !important;
+}
+[data-theme="light"] .setting-row {
+  border-bottom: 1px solid #e2e6ed !important;
+}
+[data-theme="light"] .setting-row span strong {
+  color: #0f172a !important;
+}
+[data-theme="light"] .setting-row .cell-muted {
+  color: #64748b !important;
+}

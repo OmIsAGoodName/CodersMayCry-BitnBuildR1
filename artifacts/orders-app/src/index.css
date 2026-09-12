@@ -766,6 +766,72 @@ h3 { font-size: 15px; color: #fff; }
 .sim-convergence-card { background: #064e3b; color: #fff; border-radius: 10px; padding: 16px; border: 1px solid #059669; }
 .convergence-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 4px; background: #34d399; color: #064e3b; font: 700 11px var(--app-font-mono); }
 
+
+/* ==========================================================================
+   Settings Page Grid & Cards (Desktop & Global)
+   ========================================================================== */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  align-items: start;
+  margin-top: 14px;
+}
+
+.settings-card {
+  background: #131822;
+  border: 1px solid #232c3d;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-card.wide {
+  grid-column: 1 / -1;
+}
+
+.settings-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 8px;
+}
+
+.settings-card p,
+.settings-card .setting-desc {
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.55;
+  margin-top: 6px;
+  margin-bottom: 0;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid #1c2331;
+}
+
+.setting-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.setting-row span strong {
+  font-size: 13px;
+  color: #f1f5f9;
+}
+
+.setting-row .cell-muted {
+  color: #64748b;
+  font-size: 12px;
+}
+
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
 .mobile-menu-toggle { display: none; }
@@ -1394,5 +1460,93 @@ h3 { font-size: 15px; color: #fff; }
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+}
+
+
+@media(max-width:768px) {
+  .org-header-bar {
+    padding: 10px 14px;
+    gap: 10px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .org-identity-group {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .sync-status-group {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .sync-badge {
+    flex: 1;
+    justify-content: center;
+    font-size: 10px;
+    padding: 5px 8px;
+  }
+  .settings-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-top: 10px;
+  }
+  .settings-card {
+    padding: 16px 14px;
+    border-radius: 10px;
+  }
+  .setting-row {
+    padding: 12px 0;
+    gap: 10px;
+  }
+  .filter-bar {
+    padding: 10px 12px;
+    gap: 6px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+  .filter-tab {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+
+@media(max-width:540px) {
+  .topbar {
+    height: 52px;
+    padding: 0 10px;
+  }
+  .top-actions {
+    gap: 6px;
+  }
+  .offline-pill {
+    padding: 4px 8px;
+    gap: 5px;
+  }
+  .page {
+    padding: 12px 10px 50px;
+  }
+  .setting-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .setting-row > .btn,
+  .setting-row > label.btn,
+  .setting-row > button {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+  .modal {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    padding: 16px 14px;
   }
 }

@@ -1713,7 +1713,7 @@ function SettingsPage({
                 <div>
                   <strong style={{ fontSize: 13 }}>Google Gemini (gemini-3.6-flash)</strong>
                   <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', marginTop: 2 }}>
-                    {hasCustomApiKey('gemini') ? '🔑 Custom Gemini Key (Active)' : '✨ Vendora Managed Cloud AI (Active & Protected)'}
+                    {hasCustomApiKey('gemini') ? '?? Custom Gemini Key (Active)' : '? Vendora Managed Cloud AI (Active & Protected)'}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -1738,7 +1738,7 @@ function SettingsPage({
                       setCustomKeyInput('');
                     }}
                   >
-                    <Key size={12} /> {hasCustomApiKey('gemini') ? 'Change Key' : 'Input Custom Key'}
+                    <Key size={12} /> {hasCustomApiKey('gemini') ? '?? Custom Gemini Key (Active)' : '? Vendora Managed Cloud AI (Active & Protected)'}
                   </button>
                 </div>
               </div>
@@ -1750,7 +1750,7 @@ function SettingsPage({
                 <div>
                   <strong style={{ fontSize: 13 }}>OpenAI (gpt-4o-mini)</strong>
                   <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', marginTop: 2 }}>
-                    {hasCustomApiKey('openai') ? '🔑 Custom OpenAI Key (Active)' : 'Optional · Not configured'}
+                    {hasCustomApiKey('openai') ? '?? Custom OpenAI Key (Active)' : 'Optional ? Not configured'}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -1775,7 +1775,7 @@ function SettingsPage({
                       setCustomKeyInput('');
                     }}
                   >
-                    <Key size={12} /> {hasCustomApiKey('openai') ? 'Change Key' : 'Input Key'}
+                    <Key size={12} /> {hasCustomApiKey('openai') ? '?? Custom OpenAI Key (Active)' : 'Optional ? Not configured'}
                   </button>
                 </div>
               </div>
@@ -1838,6 +1838,17 @@ function SettingsPage({
               {online ? 'Online' : 'Offline'}
             </span>
           </div>
+          <div style={{ marginTop: 16 }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                onSave(form);
+                onNotify('Weekly commitment capacity target saved!');
+              }}
+            >
+              <Check /> Save Capacity
+            </button>
+          </div>
         </section>
 
         <section className="settings-card wide">
@@ -1885,7 +1896,8 @@ function SettingsPage({
         </section>
 
         <section className="settings-card wide" style={{ border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.04)' }}>
-          <h3 style={{ color: '#ef4444' }}>Account & Session</h3>
+          <div className="eyebrow" style={{ color: '#ef4444' }}>Account & Session</div>
+          <h3 style={{ color: '#ef4444', marginTop: 8 }}>Authentication & Store Access</h3>
           <p className="setting-desc">Manage your active store credentials and device authentication.</p>
           <div className="setting-row">
             <span>

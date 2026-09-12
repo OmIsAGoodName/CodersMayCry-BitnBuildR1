@@ -2,7 +2,7 @@ import { AuthModal } from '@/components/AuthModal';
 import { Laptop } from 'lucide-react';
 import React, { useState } from 'react';
 import { useOrgAuth, UserRole } from '@/context/OrgAuthContext';
-import { LogOut, ShieldCheck, ShieldAlert, UserCheck, Cloud, CloudOff, RefreshCw, ChevronDown, Check, Building2, Plus, X } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, UserCheck, Cloud, CloudOff, RefreshCw, ChevronDown, Check, Building2, Plus, X } from 'lucide-react';
 
 export function OrgHeader() {
   const {
@@ -15,8 +15,7 @@ export function OrgHeader() {
     switchMember,
     isOnline,
     pendingSyncCount,
-    syncNow,
-    logout
+    syncNow
   } = useOrgAuth();
 
   const [memberDropdownOpen, setMemberDropdownOpen] = useState(false);
@@ -67,7 +66,7 @@ export function OrgHeader() {
         {/* Organization and Active Role Switcher */}
         <div className="org-identity-group">
           <div className="org-details" style={{ cursor: 'pointer' }} onClick={() => setOrgModalOpen(true)} title="Click to switch or create new organization">
-            <span className="org-label">ORGANIZATION · STORE TENANT</span>
+            <span className="org-label">ORGANIZATION • STORE TENANT</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span className="org-name">{organization.name}</span>
               <span className="org-switch-pill">Switch Store <ChevronDown size={11} /></span>
@@ -161,21 +160,7 @@ export function OrgHeader() {
               <span>Backup Now</span>
             </button>
           )}
-          <button
-            type="button"
-            className="sync-trigger-btn"
-            onClick={() => logout()}
-            title="Sign out of current store and user"
-            style={{
-              borderColor: 'rgba(239, 68, 68, 0.35)',
-              background: '#dc2626',
-              color: '#ffffff',
-              cursor: 'pointer',
-            }}
-          >
-            <LogOut size={12} />
-            <span>Log Out</span>
-          </button>
+
         </div>
       </div>
 
