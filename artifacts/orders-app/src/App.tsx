@@ -1408,19 +1408,6 @@ function InboxPage({
               data-testid="textarea-raw-message"
             />
 
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
-              <button
-                type="button"
-                className={`btn ${isListening ? 'btn-primary' : 'btn-quiet'}`}
-                style={{ padding: '4px 8px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                onClick={toggleVoice}
-                data-testid="button-speak-order-chip"
-              >
-                <Mic size={12} />
-                {isListening ? 'Listening…' : 'Speak Order 🎙️'}
-              </button>
-            </div>
-
             <div className="parser-hint">
               <Sparkles size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />
               <strong>Engine:</strong> {activeModel.label}. Auto-infers domain, Devanagari numerals, dates (parso, agle mangalwar), measurements, and repeat cues.
