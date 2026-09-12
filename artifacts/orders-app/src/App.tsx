@@ -640,9 +640,22 @@ function Dashboard({
         action={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
-              className="btn btn-secondary"
+              className="btn"
               onClick={() => setShowPrintLedger(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontWeight: 600 }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                fontWeight: 600,
+                fontSize: 13,
+                background: 'rgba(16, 185, 129, 0.16)',
+                color: '#10b981',
+                border: '1px solid rgba(16, 185, 129, 0.45)',
+                padding: '8px 14px',
+                borderRadius: 8,
+                cursor: 'pointer',
+                boxShadow: '0 1px 3px rgba(16, 185, 129, 0.1)'
+              }}
               title="Generate clean printable statement of accounts & export to PDF"
               data-testid="button-print-ledger"
             >
@@ -789,6 +802,7 @@ function Dashboard({
 
 function OrdersPage({
   orders,
+  settings,
   onNew,
   onEdit,
   query,
@@ -797,6 +811,7 @@ function OrdersPage({
   setFilter,
 }: {
   orders: Order[];
+  settings?: Settings;
   onNew: () => void;
   onEdit: (order: Order) => void;
   query: string;
@@ -804,6 +819,8 @@ function OrdersPage({
   filter: 'all' | OrderStatus;
   setFilter: (f: 'all' | OrderStatus) => void;
 }) {
+  const { currentMember, organization } = useOrgAuth();
+  const [showPrintLedger, setShowPrintLedger] = useState(false);
 
   const filtered = orders.filter(
     (o) =>
@@ -818,9 +835,33 @@ function OrdersPage({
         title="Orders Ledger"
         subtitle="All customer commitments, measurements, and payment records."
         action={
-          <button className="btn btn-primary" onClick={onNew} data-testid="button-add-order">
-            <Plus /> Add Order
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              className="btn"
+              onClick={() => setShowPrintLedger(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                fontWeight: 600,
+                fontSize: 13,
+                background: 'rgba(16, 185, 129, 0.16)',
+                color: '#10b981',
+                border: '1px solid rgba(16, 185, 129, 0.45)',
+                padding: '8px 14px',
+                borderRadius: 8,
+                cursor: 'pointer',
+                boxShadow: '0 1px 3px rgba(16, 185, 129, 0.1)'
+              }}
+              title="Generate clean printable statement of accounts & export to PDF"
+              data-testid="button-orders-print-ledger"
+            >
+              <Printer size={16} /> Print Ledger (PDF)
+            </button>
+            <button className="btn btn-primary" onClick={onNew} data-testid="button-add-order">
+              <Plus /> Add Order
+            </button>
+          </div>
         }
       />
 
@@ -920,6 +961,15 @@ function OrdersPage({
           <EmptyState icon={Filter} title="No matching orders" text="Try another search term or reset filters." />
         )}
       </section>
+
+      <PrintableLedgerModal
+        isOpen={showPrintLedger}
+        onClose={() => setShowPrintLedger(false)}
+        orders={orders}
+        settings={settings || { operatorName: 'Store Manager', capacity: 12, theme: 'dark', sound: false }}
+        organization={organization}
+        operatorName={currentMember?.name || settings?.operatorName}
+      />
     </div>
   );
 }
@@ -2084,6 +2134,7 @@ function App() {
         <Route path="/orders">
           <OrdersPage
             orders={orders}
+            settings={settings}
             onNew={() => setEditing(null)}
             onEdit={setEditing}
             query={ordersQuery}
