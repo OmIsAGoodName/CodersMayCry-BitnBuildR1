@@ -57,6 +57,7 @@ interface ParsedWhatsAppOrder {
     needsClarification: boolean;
   };
   autoIngested?: boolean;
+  parserUsed?: string;
 }
 
 interface WhatsAppDeskProps {
@@ -130,7 +131,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
     connectedNumber: null,
     connectedName: null,
     autoReply: false,
-    autoIngestThreshold: 0.75,
+    autoIngestThreshold: 0.80,
     recentCount: 0,
     activeBufferCount: 0,
     debounceMs: 8000,
@@ -214,7 +215,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
             onNotify(`WhatsApp Order Received from ${order.parsed.customer}`);
 
             // Auto Ingestion Check
-            if (autoIngest && order.parsed.confidence >= status.autoIngestThreshold && !order.parsed.needsClarification) {
+            if (autoIngest && order.parsed.confidence >= (status.autoIngestThreshold || 0.80) && !order.parsed.needsClarification) {
               onSaveOrder({
                 customer: order.parsed.customer,
                 phone: order.parsed.phone,
@@ -395,7 +396,8 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
               confidence: parsedRes.confidence,
               needsClarification: parsedRes.needs_clarification,
             },
-            autoIngested: autoIngest && parsedRes.confidence >= status.autoIngestThreshold && !parsedRes.needs_clarification,
+            autoIngested: autoIngest && parsedRes.confidence >= (status.autoIngestThreshold || 0.80) && !parsedRes.needs_clarification,
+            parserUsed: 'Sovereign Local Engine',
           };
 
           setMessages((prev) => [newOrder, ...prev.filter((m) => m.messageId !== newOrder.messageId)]);
@@ -650,7 +652,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
                     checked={autoIngest}
                     onChange={(e) => setAutoIngest(e.target.checked)}
                   />
-                  <span>Auto-Commit to Ledger (&ge;75% conf)</span>
+                  <span>Auto-Commit to Ledger (&ge;80% conf)</span>
                 </label>
               </div>
             </div>

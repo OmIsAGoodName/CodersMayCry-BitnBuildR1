@@ -175,6 +175,61 @@ export function extractCustomerName(rawText) {
   return null;
 }
 
+
+export async function tryOnlineParse(rawMessage, senderName = null, baseDate = new Date()) {
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
+  const groqKey = process.env.GROQ_API_KEY || '';
+  const openaiKey = process.env.OPENAI_API_KEY || '';
+
+  // 1. Try Groq Llama 3.3
+  if (groqKey) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: 'Parse colloquial Indian order to JSON: { customer, items: [{ description, quantity, attributes }], due_date (YYYY-MM-DD), amount (number), paidAmount (number), confidence (0.0 to 1.0) }' },
+            { role: 'user', content: rawMessage }
+          ],
+          response_format: { type: 'json_object' }
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const content = JSON.parse(data.choices[0].message.content);
+        return { parsed: content, parserUsed: 'Online AI (Groq Llama 3.3)' };
+      }
+    } catch {}
+  }
+
+  // 2. Try Gemini
+  if (geminiKey && geminiKey.startsWith('AIzaSy')) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Extract structured order details as JSON: { customer: string, items: [{ description: string, quantity: number, attributes: object }], due_date: string (YYYY-MM-DD or null), amount: number, paidAmount: number, confidence: number }\nOrder message: "${rawMessage}"` }] }],
+          generationConfig: { responseMimeType: 'application/json' }
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          const content = JSON.parse(text);
+          return { parsed: content, parserUsed: 'Online AI (Gemini 1.5 Flash)' };
+        }
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
 export function parseWhatsAppMessage(rawMessage, senderName = null, baseDate = new Date()) {
   const norm = normalizeHindiDigits(rawMessage.trim());
   const lower = norm.toLowerCase();
@@ -281,7 +336,7 @@ export class WhatsAppBridgeService extends EventEmitter {
     this.sock = null;
     this.authFolder = path.resolve(process.cwd(), '.whatsapp_auth');
     this.autoReply = false;
-    this.autoIngestThreshold = 0.75;
+    this.autoIngestThreshold = 0.80;
     this.recentMessages = [];
 
     // Burst debounce buffer map: senderPhone -> buffer state
