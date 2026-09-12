@@ -161,6 +161,26 @@ export function resolveColloquialDate(rawText: string, baseDate = new Date()): s
     }
   }
 
+  // 4b. Explicit Day with Month Name (e.g., "21st September", "by 15 October", "5th Nov")
+  const MONTHS_MAP: Record<string, number> = {
+    jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3,
+    may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8, sept: 8, september: 8,
+    oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11
+  };
+  const monthMatch = text.match(/\b(\d{1,2})\s*(?:st|nd|rd|th)?\s+(?:of\s+)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i)
+    || text.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})\s*(?:st|nd|rd|th)?\b/i);
+  if (monthMatch) {
+    const isFirstNum = /^\d+$/.test(monthMatch[1]);
+    const day = parseInt(isFirstNum ? monthMatch[1] : monthMatch[2], 10);
+    const mStr = (isFirstNum ? monthMatch[2] : monthMatch[1]).toLowerCase();
+    if (day >= 1 && day <= 31 && MONTHS_MAP[mStr] !== undefined) {
+      const year = baseDate.getFullYear();
+      const d = new Date(year, MONTHS_MAP[mStr], day);
+      if (d < baseDate && MONTHS_MAP[mStr] < baseDate.getMonth()) d.setFullYear(year + 1);
+      return formatISO(d);
+    }
+  }
+
   // 5. Explicit Day Numbers with "tarikh / tareekh / date / th" (e.g., "10 tarikh tak", "15th ko", "25 tareekh")
   const tarikhMatch = text.match(/\b(\d{1,2})\s*(?:st|nd|rd|th)?\s*(?:tarikh|tareekh|taareekh|tarik|tareek|तारीख|date)\b/i)
     || text.match(/\b(?:by|on|tak|ko|till)\s*(\d{1,2})(?:st|nd|rd|th)\b/i)

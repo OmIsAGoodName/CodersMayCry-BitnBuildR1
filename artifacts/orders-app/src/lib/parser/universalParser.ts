@@ -210,7 +210,8 @@ export function extractDescription(text: string): string {
     'blazer', 'pant', 'shirt', 'suit', 'lehenga', 'sherwani',
     'chocolate cake', 'birthday cake', 'cake', 'pastry', 'cupcakes',
     'veg thali', 'lunch thali', 'dinner thali', 'veg tiffin', 'non-veg tiffin', 'tiffin', 'thali',
-    'switchboard', 'switch board', 'wiring', 'ceiling fan', 'fan', 'geyser', 'ac repair', 'light fitting', 'socket'
+    'switchboard', 'switch board', 'wiring', 'ceiling fan', 'fan', 'geyser', 'ac repair', 'light fitting', 'socket',
+    'mangoes', 'mango', 'aam', 'apples', 'apple', 'bananas', 'banana', 'milk', 'doodh', 'dahi', 'paneer', 'bread', 'eggs', 'egg', 'atta', 'rice', 'dal', 'oil', 'sugar', 'biscuit', 'biscuits', 'fruits', 'sabzi'
   ];
 
   for (const item of itemKeywords) {
@@ -226,6 +227,11 @@ export function extractDescription(text: string): string {
       }
       return item;
     }
+  }
+
+  const needMatch = norm.match(/\b(?:need|want|chahiye|order\s+for|collect|send|pack|give\s+me|bhejo|de\s+do)\s+(?:(\d+)\s+)?([a-zA-Z\u0900-\u097F\s]{2,20}?)(?=[,.]|\b(?:by|at|for|i\s+will|main|total|rs|advance|tomorrow|parso|kal|with)\b|$)/i);
+  if (needMatch && needMatch[2]) {
+    return needMatch[2].trim();
   }
 
   return 'Customer order';

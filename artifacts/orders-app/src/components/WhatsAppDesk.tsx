@@ -474,7 +474,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
             WhatsApp Business Live Intake Desk
           </h1>
           <p className="subtitle" style={{ margin: 0 }}>
-            Zero-cloud-cost multi-device pairing. Ingests fragmented customer chats, debounces bursts, auto-resolves Hinglish colloquialisms, and records orders into your Sovereign Ledger.
+            Zero-cloud-cost multi-device pairing. Ingests fragmented customer chats, debounces bursts, isolates individual customer lines, auto-resolves Hinglish colloquialisms, and records orders into your Sovereign Ledger.
           </p>
         </div>
 
@@ -496,6 +496,25 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
             <Server size={14} color={bridgeUrl ? '#38BDF8' : '#94A3B8'} />
             <span>{bridgeUrl ? 'Cloud Bridge' : 'Local Bridge'}</span>
           </button>
+
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              borderRadius: 8,
+              background: 'rgba(16, 185, 129, 0.1)',
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+              fontSize: 11,
+              color: '#10B981',
+              fontWeight: 600,
+            }}
+            title="AI Privacy Guard auto-filters spouse messages, family chats, personal chatter, and OTPs so employees only see commercial orders"
+          >
+            <ShieldCheck size={13} />
+            <span>AI Privacy Guard Active</span>
+          </div>
 
           {status.status === 'connected' ? (
               <>

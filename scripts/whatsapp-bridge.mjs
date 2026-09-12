@@ -54,6 +54,20 @@ export function resolveColloquialDate(rawText, baseDate = new Date()) {
   if (/\b(agle hafte|next week|अगले हफ्ते)\b/i.test(text)) {
     const d = new Date(baseDate); d.setDate(d.getDate() + 7); return formatISO(d);
   }
+  const monthMatch = text.match(/\b(\d{1,2})\s*(?:st|nd|rd|th)?\s+(?:of\s+)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i)
+    || text.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})\s*(?:st|nd|rd|th)?\b/i);
+  if (monthMatch) {
+    const isFirstNum = /^\d+$/.test(monthMatch[1]);
+    const day = parseInt(isFirstNum ? monthMatch[1] : monthMatch[2], 10);
+    const mStr = (isFirstNum ? monthMatch[2] : monthMatch[1]).toLowerCase();
+    if (day >= 1 && day <= 31 && MONTHS_MAP[mStr] !== undefined) {
+      const year = baseDate.getFullYear();
+      const d = new Date(year, MONTHS_MAP[mStr], day);
+      if (d < baseDate && MONTHS_MAP[mStr] < baseDate.getMonth()) d.setFullYear(year + 1);
+      return formatISO(d);
+    }
+  }
+
   const tarikhMatch = text.match(/\b(\d{1,2})\s*(?:st|nd|rd|th)?\s*(?:tarikh|tareekh|तारीख|date)\b/i)
     || text.match(/\b(\d{1,2})(?:st|nd|rd|th)\s*(?:ko|tak|morning|evening)\b/i);
   if (tarikhMatch) {
@@ -66,6 +80,65 @@ export function resolveColloquialDate(rawText, baseDate = new Date()) {
     }
   }
   return null;
+}
+
+
+const MONTHS_MAP = {
+  jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3,
+  may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8, sept: 8, september: 8,
+  oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11
+};
+
+export function classifyMessageIntent(text) {
+  const norm = (text || '').toLowerCase().trim();
+  if (!norm) return { isOrder: false, intent: 'empty', confidence: 1 };
+
+  // Domestic / Spouse / Family Chores & Personal Life
+  const DOMESTIC_PERSONAL_PATTERNS = [
+    /\b(ghar\s+(?:aate\s+waqt|le\s+aana|lete\s+aana|ke\s+liye|pe\s+rakh|kab\s+aaoge))\b/i,
+    /\b(khana\s+(?:kha\s+liya|bana\s+diya|bana\s+du|ban\s+gaya|thanda\s+ho\s+raha))\b/i,
+    /\b(suno|sunte\s+ho|jaan|baby|shona|darling|sweetheart|biwi|mummy|papa|beta)\b/i,
+    /\b(so\s+gaya|uth\s+gaya|call\s+karo|phone\s+uthao|phone\s+kyu\s+nahi|miss\s+you|love\s+you)\b/i,
+    /\b(movie|film|match|cricket|game|party|ghumne|chalo\s+bhai|milte\s+hai|chai\s+peene)\b/i,
+    /\b(kaisa\s+hai|kaisi\s+hai|kaha\s+ho|kidhar\s+ho)\b/i,
+    /\b(kuch\s+nahi|thik\s+hai|theek\s+hai|achha|accha|haan\s+bhai|bye|good\s+night|gn|good\s+morning|gm)\b/i,
+    /\b(happy\s+birthday|hbd|congrats|mubarak|shubh\s+kamnaye)\b/i,
+    /\b(otp|verification\s+code|account\s+credited|debited|loan\s+approved)\b/i,
+  ];
+
+  // Commercial / Order Markers
+  const COMMERCIAL_INDICATORS = [
+    /\b(chahiye|order|deliver|delivery|bhej\s+do|bhejo|pack\s+kardo|ready\s+rakhna)\b/i,
+    /\b(advance|gpay|phonepe|paytm|cash|bill|rupees|rupaye|rs\.?|inr|total|rate|price|cost)\b/i,
+    /\b(i\s+need|i\s+want|order\s+for|collect\s+it|pickup|kitna\s+hua|kitne\s+ka)\b/i,
+    /\b(\d+)\s*(?:kg|kilo|pcs|pieces|packet|darjan|dozen|litres?|ltr|bottle|box)\b/i,
+    /\b(navy\s+blue|chest\s+\d+|size\s+\d+|naap|alter|stitching)\b/i,
+    /\b(bhaiya|uncle|sir|madam|ji|store|dukaan|counter)\b/i,
+  ];
+
+  const COMMODITIES = /\b(mango|mangoes|aam|apple|banana|sabzi|tamatar|aloo|pyaz|milk|doodh|dahi|paneer|curd|bread|egg|eggs|atta|rice|dal|oil|ghee|sugar|kurta|shirt|pant|saree|suit|blouse|cake|pastry|thali|tiffin|wire|cable|switch|fan)\b/i;
+
+  const isDomestic = DOMESTIC_PERSONAL_PATTERNS.some((p) => p.test(norm));
+  const commercialHits = COMMERCIAL_INDICATORS.filter((p) => p.test(norm)).length;
+  const hasCommodity = COMMODITIES.test(norm);
+  const hasPricing = /\b(?:\d+\s*(?:rs|rupees|rupaye|₹)|(?:rs\.?|₹)\s*\d+|total|advance|pay)\b/i.test(norm);
+
+  // If domestic/personal and lacks explicit commercial context -> protect privacy
+  if (isDomestic && !hasPricing && !/\b(order|dukaan|shop|advance|gpay|deliver|bhaiya|tailor)\b/i.test(norm)) {
+    return { isOrder: false, intent: 'private_personal', confidence: 0.98 };
+  }
+
+  // Definite commercial order
+  if (commercialHits >= 2 || (hasCommodity && (hasPricing || commercialHits >= 1))) {
+    return { isOrder: true, intent: 'commercial_order', confidence: 0.92 };
+  }
+
+  // Short order inquiry (e.g. "Tailoring?", "Cake milega?", "Rate batao")
+  if (/^(?:bhaiya\??|tailoring\?|order\?|cake\s+milega\?|rate\s+batao|dukaan\s+khuli\s+hai\?)/i.test(norm)) {
+    return { isOrder: true, intent: 'order_inquiry', confidence: 0.75 };
+  }
+
+  return { isOrder: false, intent: 'casual_chitchat', confidence: 0.85 };
 }
 
 export function cleanName(raw) {
@@ -144,9 +217,33 @@ export function parseWhatsAppMessage(rawMessage, senderName = null, baseDate = n
   if (fabricMatch) attributes.fabric = fabricMatch[1];
 
   let description = 'Customer order';
-  const descMatch = norm.match(/\b(?:[a-zA-Z\u0900-\u097F\s]{0,15}(?:kurta|kameez|blouse|saree|blazer|suit|pant|cake|pastry|thali|tiffin|wiring|fan|geyser)[a-zA-Z\u0900-\u097F\s]{0,20})\b/i);
-  if (descMatch) {
-    description = descMatch[0].replace(/\b(chahiye|bana do|karna hai|please|plz|urgent|urgently|jaldi|bhaiya|ji|sir|madam)\b/gi, '').replace(/[.,]/g, '').trim();
+  const COMMODITY_WORDS = [
+    'mango', 'mangoes', 'aam', 'apple', 'apples', 'seb', 'banana', 'bananas', 'kela',
+    'onion', 'onions', 'pyaz', 'potato', 'potatoes', 'aloo', 'tomato', 'tomatoes', 'tamatar', 'sabzi',
+    'milk', 'doodh', 'dahi', 'curd', 'paneer', 'butter', 'bread', 'egg', 'eggs', 'anda',
+    'atta', 'flour', 'rice', 'chawal', 'dal', 'oil', 'tel', 'ghee', 'sugar', 'cheeni', 'salt', 'tea', 'chai',
+    'biscuit', 'biscuits', 'snack', 'snacks', 'namkeen', 'chips',
+    'kurta', 'kameez', 'blouse', 'saree', 'suit', 'pant', 'shirt', 'blazer',
+    'cake', 'cakes', 'pastry', 'pastries', 'thali', 'tiffin', 'meal', 'lunch', 'dinner',
+    'wiring', 'wire', 'cable', 'switch', 'socket', 'bulb', 'fan', 'geyser', 'pipe'
+  ];
+
+  const commRegex = new RegExp(`\\b(${COMMODITY_WORDS.join('|')})\\b`, 'i');
+
+  const needMatch = norm.match(/\b(?:need|want|chahiye|order\s+for|collect|send|pack|give\s+me|bhejo|de\s+do)\s+(?:(\d+)\s+)?([a-zA-Z\u0900-\u097F\s]{2,20}?)(?=[,.]|\b(?:by|at|for|i\s+will|main|total|rs|advance|tomorrow|parso|kal|with)\b|$)/i);
+  if (needMatch) {
+    if (needMatch[1]) quantity = parseInt(needMatch[1], 10);
+    description = needMatch[2].trim();
+  }
+
+  if (description === 'Customer order') {
+    const descMatch = norm.match(/\b(?:[a-zA-Z\u0900-\u097F\s]{0,15}(?:kurta|kameez|blouse|saree|blazer|suit|pant|cake|pastry|thali|tiffin|wiring|fan|geyser)[a-zA-Z\u0900-\u097F\s]{0,20})\b/i);
+    if (descMatch) {
+      description = descMatch[0].replace(/\b(chahiye|bana do|karna hai|please|plz|urgent|urgently|jaldi|bhaiya|ji|sir|madam)\b/gi, '').replace(/[.,]/g, '').trim();
+    } else {
+      const cMatch = norm.match(commRegex);
+      if (cMatch) description = cMatch[1];
+    }
   }
 
   const isVague = /^(hi|hello|namaste|bhaiya|uncle|call karo|rate batao)\s*[.!?]*$/i.test(lower);
@@ -312,6 +409,14 @@ export class WhatsAppBridgeService extends EventEmitter {
         for (const msg of messages) {
           if (!msg.message || msg.key.fromMe) continue;
 
+          const senderJid = msg.key.remoteJid || '';
+
+          // 1. Strict Privacy: Ignore group chats, status broadcasts, and newsletters
+          // Prevents family/group messages from being ingested or viewed by store staff
+          if (senderJid.endsWith('@g.us') || senderJid.includes('@broadcast') || senderJid.includes('@newsletter')) {
+            continue;
+          }
+
           const messageText = msg.message.conversation
             || msg.message.extendedTextMessage?.text
             || msg.message.imageMessage?.caption
@@ -319,11 +424,21 @@ export class WhatsAppBridgeService extends EventEmitter {
 
           if (!messageText.trim()) continue;
 
-          const senderJid = msg.key.remoteJid || '';
-          const senderPhone = senderJid.split('@')[0];
+          // 2. Extract unique 1-on-1 human phone number
+          const senderPhone = senderJid.split('@')[0].split(':')[0];
+          if (!senderPhone || senderPhone.length < 8) continue;
+
+          // 3. AI Privacy Guard: Check if message has commercial/order intent
+          const intentCheck = classifyMessageIntent(messageText);
+          if (!intentCheck.isOrder) {
+            console.log(`[WA-Bridge Privacy Guard] Shielded private/domestic message from +${senderPhone}: Intent="${intentCheck.intent}"`);
+            continue;
+          }
+
           const pushName = msg.pushName || null;
           const timestamp = Number(msg.messageTimestamp) * 1000 || Date.now();
 
+          // Isolate each customer by their unique phone number
           this.queueIncomingMessage({
             id: msg.key.id || `msg_${Date.now()}`,
             text: messageText,
