@@ -781,23 +781,74 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
 
   return (
     <div className="page">
-      <div className="page-header" style={{ marginBottom: 22, gap: 16 }}>
-        <div style={{ maxWidth: 740 }}>
-          <span className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+      <div
+        className="page-header"
+        style={{
+          marginBottom: 28,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: '20px 24px',
+        }}
+      >
+        <div style={{ maxWidth: 760, flex: '1 1 540px' }}>
+          <span
+            className="eyebrow"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: 8,
+              fontSize: 11.5,
+              letterSpacing: '0.08em',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+            }}
+          >
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10B981', display: 'inline-block', boxShadow: '0 0 6px rgba(16, 185, 129, 0.4)' }} />
             SOVEREIGN HARDWARE BRIDGE
           </span>
-          <h1 style={{ fontSize: 26, fontWeight: 700, margin: '3px 0 8px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <MessageSquare size={26} color="#25D366" />
+          <h1
+            style={{
+              fontSize: 27,
+              fontWeight: 700,
+              margin: '4px 0 12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              letterSpacing: '-0.02em',
+              lineHeight: 1.25,
+            }}
+          >
+            <MessageSquare size={28} color="#25D366" />
             WhatsApp Business Live Intake Desk
           </h1>
-          <p className="subtitle" style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'hsl(var(--muted-foreground))' }}>
+          <p
+            className="subtitle"
+            style={{
+              margin: '0 0 6px 0',
+              fontSize: 13.5,
+              lineHeight: 1.65,
+              letterSpacing: '0.01em',
+              color: 'hsl(var(--muted-foreground))',
+            }}
+          >
             Zero-cloud-cost multi-device pairing. Aggregates burst customer chats, debounces multi-turn messages, auto-resolves Hinglish colloquialisms, and records orders straight into your Sovereign Ledger.
           </p>
         </div>
 
         {/* Top Status & Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', alignSelf: 'flex-start' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            flexWrap: 'wrap',
+            alignSelf: 'center',
+            marginTop: 6,
+          }}
+        >
           {/* Bridge Toggle */}
           <button
             type="button"
@@ -807,9 +858,22 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
               setShowBridgeModal(true);
             }}
             title="Configure Cloud Backend Bridge URL (Render / Railway)"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '7px 12px', borderRadius: 9 }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 12.5,
+              fontWeight: 600,
+              letterSpacing: '0.01em',
+              padding: '9px 16px',
+              borderRadius: 10,
+              background: 'hsl(var(--card))',
+              border: '1px solid hsl(var(--border))',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              cursor: 'pointer',
+            }}
           >
-            <Server size={14} color={bridgeUrl ? '#38BDF8' : '#94A3B8'} />
+            <Server size={15} color={bridgeUrl ? '#38BDF8' : '#94A3B8'} />
             <span>{bridgeUrl ? 'Cloud Bridge' : 'Local Bridge'}</span>
           </button>
 
@@ -818,9 +882,9 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 8,
-              padding: '7px 14px',
-              borderRadius: 9,
+              gap: 9,
+              padding: '9px 18px',
+              borderRadius: 10,
               background: status.status === 'connected'
                 ? 'rgba(16, 185, 129, 0.12)'
                 : status.status === 'qr_ready' || status.status === 'connecting'
@@ -833,17 +897,19 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
                   : '1px solid rgba(239, 68, 68, 0.25)',
               fontSize: 12,
               fontWeight: 700,
+              letterSpacing: '0.05em',
               color: status.status === 'connected'
                 ? '#10B981'
                 : status.status === 'qr_ready' || status.status === 'connecting'
                   ? '#F59E0B'
                   : '#F87171',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
             }}
           >
             <span
               style={{
-                width: 7,
-                height: 7,
+                width: 8,
+                height: 8,
                 borderRadius: '50%',
                 background: status.status === 'connected'
                   ? '#10B981'
@@ -870,10 +936,20 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
               type="button"
               className="btn btn-quiet"
               onClick={handleDisconnect}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '7px 14px', borderRadius: 9 }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 12.5,
+                fontWeight: 600,
+                letterSpacing: '0.01em',
+                padding: '9px 18px',
+                borderRadius: 10,
+                cursor: 'pointer',
+              }}
               title="Disconnect linked WhatsApp device"
             >
-              <WifiOff size={14} /> Disconnect
+              <WifiOff size={15} /> Disconnect
             </button>
           ) : (
             <button
@@ -884,17 +960,19 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 6,
-                fontSize: 12,
-                padding: '7px 16px',
-                borderRadius: 9,
+                gap: 8,
+                fontSize: 12.5,
+                padding: '9px 20px',
+                borderRadius: 10,
                 fontWeight: 700,
+                letterSpacing: '0.02em',
                 background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
                 border: 'none',
-                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)',
+                boxShadow: '0 3px 10px rgba(16, 185, 129, 0.28)',
+                cursor: 'pointer',
               }}
             >
-              {connecting ? <RefreshCw size={14} className="spin" /> : <QrCode size={14} />}
+              {connecting ? <RefreshCw size={15} className="spin" /> : <QrCode size={15} />}
               <span>{status.status === 'qr_ready' ? 'Regenerate QR' : 'Pair WhatsApp'}</span>
             </button>
           )}
