@@ -93,6 +93,11 @@ export function classifyMessageIntent(text) {
   const norm = (text || '').toLowerCase().trim();
   if (!norm) return { isOrder: false, intent: 'empty', confidence: 1 };
 
+  // 1. Explicit keyword prefix: "order", "#order", "ord", "booking"
+  if (/^(?:order|#order|ord|booking)\b/i.test(norm)) {
+    return { isOrder: true, intent: 'keyword_order', confidence: 1.0 };
+  }
+
   // Domestic / Spouse / Family Chores & Personal Life
   const DOMESTIC_PERSONAL_PATTERNS = [
     /\b(ghar\s+(?:aate\s+waqt|le\s+aana|lete\s+aana|ke\s+liye|pe\s+rakh|kab\s+aaoge))\b/i,
@@ -106,17 +111,17 @@ export function classifyMessageIntent(text) {
     /\b(otp|verification\s+code|account\s+credited|debited|loan\s+approved)\b/i,
   ];
 
-  // Commercial / Order Markers
+  // Commercial / Order Markers (Hinglish + English)
   const COMMERCIAL_INDICATORS = [
-    /\b(chahiye|order|deliver|delivery|bhej\s+do|bhejo|pack\s+kardo|ready\s+rakhna)\b/i,
-    /\b(advance|gpay|phonepe|paytm|cash|bill|rupees|rupaye|rs\.?|inr|total|rate|price|cost)\b/i,
-    /\b(i\s+need|i\s+want|order\s+for|collect\s+it|pickup|kitna\s+hua|kitne\s+ka)\b/i,
-    /\b(\d+)\s*(?:kg|kilo|pcs|pieces|packet|darjan|dozen|litres?|ltr|bottle|box)\b/i,
+    /\b(chahiye|order|orders|deliver|delivery|delivered|bhej\s+do|bhejo|pack\s+kardo|ready\s+rakhna)\b/i,
+    /\b(advance|gpay|phonepe|paytm|cash|bill|rupees|rupaye|rs\.?|inr|total|rate|price|cost|pay)\b/i,
+    /\b(need|want|i\s+need|i\s+want|order\s+for|collect\s+it|pickup|kitna\s+hua|kitne\s+ka)\b/i,
+    /\b(\d+)\s*(?:kg|kilo|pcs|pieces?|packs?|packets?|bottles?|darjan|dozen|litres?|ltr|box|boxes|cans?)\b/i,
     /\b(navy\s+blue|chest\s+\d+|size\s+\d+|naap|alter|stitching)\b/i,
     /\b(bhaiya|uncle|sir|madam|ji|store|dukaan|counter)\b/i,
   ];
 
-  const COMMODITIES = /\b(mango|mangoes|aam|apple|banana|sabzi|tamatar|aloo|pyaz|milk|doodh|dahi|paneer|curd|bread|egg|eggs|atta|rice|dal|oil|ghee|sugar|kurta|shirt|pant|saree|suit|blouse|cake|pastry|thali|tiffin|wire|cable|switch|fan)\b/i;
+  const COMMODITIES = /\b(mango|mangoes|aam|apple|banana|sabzi|tamatar|aloo|pyaz|milk|doodh|dahi|paneer|curd|bread|egg|eggs|atta|rice|dal|oil|olive\s+oil|tea|earl\s+grey|coffee|coke|coca\s+cola|cococola|pepsi|water|ghee|sugar|kurta|shirt|pant|saree|suit|blouse|cake|pastry|thali|tiffin|wire|cable|switch|fan)\b/i;
 
   const isDomestic = DOMESTIC_PERSONAL_PATTERNS.some((p) => p.test(norm));
   const commercialHits = COMMERCIAL_INDICATORS.filter((p) => p.test(norm)).length;
@@ -403,6 +408,8 @@ export class WhatsAppBridgeService extends EventEmitter {
     // Burst debounce buffer map: senderPhone -> buffer state
     this.messageBuffers = new Map();
     this.DEBOUNCE_MS = 8000;
+    this.requireKeyword = true;
+    this.orderKeyword = 'order';
   }
 
   getStatus() {
@@ -417,6 +424,8 @@ export class WhatsAppBridgeService extends EventEmitter {
       recentCount: this.recentMessages.length,
       activeBufferCount: this.messageBuffers.size,
       debounceMs: this.DEBOUNCE_MS,
+      requireKeyword: this.requireKeyword,
+      orderKeyword: this.orderKeyword,
     };
   }
 
@@ -427,10 +436,12 @@ export class WhatsAppBridgeService extends EventEmitter {
     }));
   }
 
-  setSettings({ autoReply, autoIngestThreshold, debounceMs }) {
+  setSettings({ autoReply, autoIngestThreshold, debounceMs, requireKeyword, orderKeyword }) {
     if (typeof autoReply === 'boolean') this.autoReply = autoReply;
     if (typeof autoIngestThreshold === 'number') this.autoIngestThreshold = autoIngestThreshold;
     if (typeof debounceMs === 'number' && debounceMs >= 1000) this.DEBOUNCE_MS = debounceMs;
+    if (typeof requireKeyword === 'boolean') this.requireKeyword = requireKeyword;
+    if (typeof orderKeyword === 'string' && orderKeyword.trim()) this.orderKeyword = orderKeyword.trim().toLowerCase();
     this.emit('settings', this.getStatus());
   }
 
@@ -547,12 +558,27 @@ export class WhatsAppBridgeService extends EventEmitter {
           const senderPhone = senderJid.split('@')[0].split(':')[0];
           if (!senderPhone || senderPhone.length < 8) continue;
 
-          // 3. AI Privacy Guard: Check if message has commercial/order intent
-          const intentCheck = classifyMessageIntent(messageText);
-          if (!intentCheck.isOrder) {
-            console.log(`[WA-Bridge Privacy Guard] Shielded private/domestic message from +${senderPhone}: Intent="${intentCheck.intent}"`);
+          // 3. AI Privacy Guard & Keyword Gate
+          // If requireKeyword is true, only ingest messages starting with "order" (or "#order", "ord")
+          const keywordRegex = new RegExp(`^(?:${this.orderKeyword || 'order'}|#${this.orderKeyword || 'order'}|ord|booking)\\b[:\\s\\-]*`, 'i');
+          const hasKeyword = keywordRegex.test(messageText.trim());
+
+          if (this.requireKeyword && !hasKeyword) {
+            console.log(`[WA-Bridge Privacy Guard] Shielded private/domestic message from +${senderPhone}: Missing "${this.orderKeyword || 'order'}" keyword prefix`);
             continue;
           }
+
+          if (!this.requireKeyword && !hasKeyword) {
+            const intentCheck = classifyMessageIntent(messageText);
+            if (!intentCheck.isOrder) {
+              console.log(`[WA-Bridge Privacy Guard] Shielded private/domestic message from +${senderPhone}: Intent="${intentCheck.intent}"`);
+              continue;
+            }
+          }
+
+          // Clean keyword prefix cleanly so parser extracts proper customer & items
+          const cleanText = hasKeyword ? messageText.trim().replace(keywordRegex, '').trim() : messageText.trim();
+          if (!cleanText) continue;
 
           const pushName = msg.pushName || null;
           const timestamp = Number(msg.messageTimestamp) * 1000 || Date.now();
@@ -560,7 +586,7 @@ export class WhatsAppBridgeService extends EventEmitter {
           // Isolate each customer by their unique phone number
           this.queueIncomingMessage({
             id: msg.key.id || `msg_${Date.now()}`,
-            text: messageText,
+            text: cleanText,
             phone: `+${senderPhone}`,
             rawPhone: senderPhone,
             senderJid,

@@ -4,7 +4,7 @@ import {
   RotateCcw, Sparkles, Send, Phone, User, Calendar, IndianRupee,
   Layers, Check, Copy, RefreshCw, Volume2, ShieldCheck, Zap,
   Globe, Server, Link2, ExternalLink
-} from 'lucide-react';
+, KeyRound} from 'lucide-react';
 import { Order } from '@/lib/storage/offlineDb';
 import { parseUniversalMessage } from '@/lib/parser/universalParser';
 import { parseOrderHybrid } from '@/lib/parser/hybridParser';
@@ -20,6 +20,8 @@ interface WhatsAppStatus {
   recentCount: number;
   activeBufferCount: number;
   debounceMs?: number;
+  requireKeyword?: boolean;
+  orderKeyword?: string;
 }
 
 interface ChatActivity {
@@ -105,22 +107,28 @@ function playWhatsAppChime() {
 
 const PRESET_SIMULATIONS = [
   {
+    label: 'Grocery & Olive Oil (Sarah)',
+    phone: '+919833445566',
+    name: 'Sarah',
+    text: 'Order: This is Sarah. Need 1 pack of Earl Grey tea bags and 3 bottles of olive oil delivered by 5 PM.',
+  },
+  {
+    label: 'Cafe & Beverage (Mario Balotelli)',
+    phone: '+919877112233',
+    name: 'Mario Balotelli',
+    text: "Order: This is Mario Balotelli. Need 1 pack of Coffee and 3 Cococola delivered by 5 PM. I'll pay u 250rs",
+  },
+  {
     label: 'Tailoring Burst (Ramesh)',
     phone: '+919820123456',
     name: 'Ramesh Kumar',
-    text: `Bhaiya Ramesh here\n2 kurta urgently chahiye\nchest 40, navy blue\n15 tarikh tak de dena\nadvance ₹1800 gpay kiya`,
+    text: 'Order: Bhaiya Ramesh here\n2 kurta urgently chahiye\nchest 40, navy blue\n15 tarikh tak de dena\nadvance ₹1800 gpay kiya',
   },
   {
     label: 'Bakery Order (Priya)',
     phone: '+919876543210',
     name: 'Priya Sharma',
-    text: `main Priya bol rahi hu\nkal dopahar 1 baje 3 veg lunch thali aur 1kg chocolate cake chahiye\nwrite Happy Birthday Aryan\n720 rupaye bhej diye`,
-  },
-  {
-    label: 'Electrical Repair (Vikram)',
-    phone: '+919811223344',
-    name: 'Vikram Singh',
-    text: `uncle switchboard mein sparking ho rahi hai hall mein\nparso subah aakar check kardo\ntotal 450 rs\n- Vikram`,
+    text: 'Order: main Priya bol rahi hu\nkal dopahar 1 baje 3 veg lunch thali aur 1kg chocolate cake chahiye\nwrite Happy Birthday Aryan\n720 rupaye bhej diye',
   },
 ];
 
@@ -136,6 +144,8 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
     recentCount: 0,
     activeBufferCount: 0,
     debounceMs: 8000,
+    requireKeyword: true,
+    orderKeyword: 'order',
   });
 
   const [activeActivity, setActiveActivity] = useState<ChatActivity | null>(null);
@@ -369,17 +379,18 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
           playWhatsAppChime();
 
           const rawMerged = accumulated.join('\n');
+          const cleanMerged = rawMerged.replace(/^(?:order|#order|ord|booking)\b[:\s\-]*/i, '').trim();
           let parsedRes: any = null;
           let parserBadge = 'Sovereign Local Engine';
 
           try {
-            const hybridRes = await parseOrderHybrid(rawMerged);
+            const hybridRes = await parseOrderHybrid(cleanMerged);
             parsedRes = hybridRes;
             parserBadge = hybridRes._source === 'online_ai'
               ? (hybridRes._modelUsed ? `Online AI (${hybridRes._modelUsed})` : 'Online AI (Gemini 3.6 Flash)')
               : 'Sovereign Local Engine';
           } catch {
-            parsedRes = parseUniversalMessage(rawMerged);
+            parsedRes = parseUniversalMessage(cleanMerged);
             parserBadge = 'Sovereign Local Engine';
           }
 
@@ -436,6 +447,19 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
         }, 1200);
       }
     }, 450);
+  };
+
+    const handleToggleKeywordGate = async () => {
+    const nextVal = !(status.requireKeyword ?? true);
+    setStatus((prev) => ({ ...prev, requireKeyword: nextVal }));
+    try {
+      await fetch(getApiUrl('/api/whatsapp/settings'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requireKeyword: nextVal, orderKeyword: 'order' }),
+      });
+      onNotify(nextVal ? 'Privacy Keyword Gate ENABLED: Only messages starting with "order" are processed' : 'AI Intent Auto-Detection Mode enabled');
+    } catch {}
   };
 
   const handleSimulateBurst = async () => {
