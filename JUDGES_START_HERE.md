@@ -1,42 +1,84 @@
 # 🏆 Vendora — Quick Start Guide for Judges
-> **Bit N Build Hackathon** · **Track 3: Jan Jeevan** · **Team CodersMayCry**
+> **Bit N Build Hackathon 2026** · **Track 3: Jan Jeevan (Everyday Indian Life & Micro-Commerce)** · **Team CodersMayCry**
 
-Welcome! **Vendora** is a sovereign, offline-first order intake and ledger platform built for India's 63M+ grassroots merchants, kirana stores, and local businesses.
+Welcome! **Vendora** is a sovereign, offline-first order intake and financial ledger platform purpose-built for India's 63M+ grassroots micro-merchants, kiranas, tailors, and local service providers.
 
 ---
 
-## ⏱️ 60-Second Evaluation Checklist
+## 🌐 Live Deployments & Instant Access
+- 🚀 **Live Web Application (Vercel)**: [https://coders-may-cry-bitn-build-r1-api-se.vercel.app](https://coders-may-cry-bitn-build-r1-api-se.vercel.app)
+- ⚡ **WhatsApp Cloud Bridge (Render)**: [https://vendora-bridge.onrender.com](https://vendora-bridge.onrender.com)
+- 🧪 **Local Dev Server**: `http://localhost:5173/`
 
-### 1. Test 100% Offline Capability
+---
+
+## ⏱️ 3-Minute Evaluation Checklist for Judges
+
+### 1. 100% Offline Capability (Airplane Mode Test)
 1. Open the application.
-2. Turn off your Wi-Fi or enable **Airplane Mode** in Chrome DevTools (*Network* -> *Offline*).
-3. Type or voice-input a colloquial order in the Universal Inbox:
+2. Turn off Wi-Fi or toggle **Airplane Mode / Offline** in Chrome DevTools (*Inspect -> Network -> Offline*).
+3. Type or voice-record an Indian colloquial order in the **Universal Inbox** (`/inbox`):
    > *"Bhaiya Ramesh here. 2 kurta navy blue, chest 40, parso chahiye. total ₹1850, 500 advance diya."*
-4. Click **Commit to Sovereign Ledger**. Notice instant (< 2ms) parsing, price calculations, customer extraction, and permanent offline saving!
+4. Click **Commit to Sovereign Ledger**.
+   - Notice instant (< 2ms) sub-zero latency parsing, date translation (*parso* -> exact ISO date), measurement extraction (*chest 40*), and offline persistence via IndexedDB.
 
-### 2. Test Sovereign WhatsApp Business Intake Bridge
-1. Navigate to **WhatsApp Live Desk** from the sidebar (`/whatsapp`).
-2. **Physical Device Pairing**: Click **Pair WhatsApp** to generate a live QR code via Baileys multi-device WebSocket. Scan via WhatsApp (*Settings -> Linked Devices -> Link a Device*).
-3. **Multi-Turn Burst Debounce Simulator**: Click **"Simulate Real-Time WhatsApp Burst"** to test without a phone.
+### 2. Dual-Engine Online AI with Automatic Groq Failover
+1. In the **Intake Controls** bar at the top of the Inbox or WhatsApp Desk:
+   - Notice the **Engine Selector**: Choose between **⚡ Groq Ultra-Fast (14,400 req/day)**, **⚡ Google Gemini 3.6 Flash**, or **🛡️ Sovereign Local Engine**.
+   - If Google Gemini reaches free tier quota limits (HTTP 429), Vendora **automatically and seamlessly fails over to Groq's high-throughput LLaMA/Qwen model** with an explicit on-screen badge so merchant operations never halt!
+
+### 3. Privacy Keyword Gate (`order` filter)
+1. Toggle the **Keyword Gate** switch in the Intake Controls bar.
+2. When active, domestic/casual chatter (*"Hi mummy kaisa hai"* or *"What is the score?"*) is safely ignored.
+3. Commercial orders starting with `"order"` (*"order 2kg atta total 120"*) are ingested with 100% precision, protecting personal privacy on shared family phones.
+
+### 4. Sovereign WhatsApp Business Intake Bridge (`/whatsapp`)
+1. **Device Pairing**: Click **Pair WhatsApp** to generate a live QR code via Baileys multi-device WebSocket protocol.
+2. **Multi-Turn Burst Debounce Simulator**: Click **"Simulate Real-Time WhatsApp Burst"** to test without a physical phone:
    - Watch the **3.0s sliding debounce aggregator** display a live pulse indicator as 5 rapid fragmented messages arrive.
-   - Watch it merge the chat turns, extract customer names, Devanagari numerals, relative dates (*parso*, *15 tarikh*), measurements (*chest 40*), and financial splits (*total ₹1800, advance ₹1800*).
-   - If auto-reply is enabled, it sends an automated receipt back to the customer!
+   - Automatically merges chat turns, extracts customer names, Devanagari numerals, relative dates, and financial splits.
+   - Dispatches automated customer receipts if auto-reply is toggled!
 
-### 3. Run Automated Verification Suite
+### 5. Printable Ledger & Selective PDF Statement (`/` and `/orders`)
+1. On the Home Dashboard or Orders Ledger, click **"🖨️ Print Ledger (PDF)"**.
+2. **Selective Order Printing**:
+   - Check/uncheck individual customer orders or click **"Only with Dues"** to isolate pending balances.
+   - Watch the 4 summary KPI cards (Gross Value, Advance Paid, Balance Due) recompute in real-time for your selection.
+3. Click **"Print X Selected Orders (PDF)"**:
+   - Generates an ink-efficient A4 landscape statement document formatted for Indian merchant tax/accounting records, complete with customer details, measurements, balance dues, and an authorized signature/seal box.
+4. Click **"Export CSV"** for 1-click export to Microsoft Excel or Tally.
+
+---
+
+## 🧪 Automated Verification Suite
+Run the 100% automated test suite from the terminal:
 ```bash
 pnpm test
 ```
-Validates:
-- Universal NLP Parser accuracy across Indian colloquialisms
-- Devanagari numerals & Hinglish date resolution
-- Sovereign storage durability and local ledger consistency
+**Test Coverage:**
+- ✅ Indian Colloquial Date Resolution (*aaj*, *kal*, *parso*, *tarso*, *15 tarikh*)
+- ✅ Universal Message NLP Parser & `schema.json` Strict Contract
+- ✅ Deterministic CRDT Multi-Device Sync Convergence (Scenario 1 & Scenario 2)
+- ✅ Offline Operational Query Layer (Due today, overdue, debt balances)
 
 ---
 
-## 📁 Repository Structure
-- `artifacts/orders-app/`: Main React 19 offline-first web application
-- `scripts/whatsapp-bridge.mjs`: Sovereign Baileys multi-device WhatsApp bridge & burst debouncer
-- `lib/`: Shared parser and sovereign offline storage utilities
-- `scripts/`: Verification, build, and presentation automation scripts
+## 📁 Repository Architecture
+```
+artifacts/orders-app/      -> React 19 + TypeScript + Vite offline-first PWA
+artifacts/orders-app/src/
+  ├── components/
+  │   ├── PrintableLedgerModal.tsx -> Selective PDF statement generator & print view
+  │   ├── WhatsAppDesk.tsx         -> WhatsApp live device bridge & burst simulator
+  │   ├── QueryDesk.tsx            -> Natural language offline query desk
+  │   └── OrgHeader.tsx            -> Store switcher & team RBAC header
+  ├── lib/
+  │   ├── parser/hybridParser.ts   -> Dual Gemini + Groq AI parser with auto-failover
+  │   ├── storage/offlineDb.ts     -> Sovereign IndexedDB schema & CRDT oplog
+  │   └── sync/offlineSyncManager.ts -> Background multi-peer Supabase synchronization
+scripts/
+  ├── whatsapp-bridge.mjs          -> Baileys WebSocket bridge server with sliding debounce
+  └── test-all.mjs                 -> Comprehensive test suite runner
+```
 
-*Built with ❤️ for Bit N Build Hackathon 2026.*
+*Built with ❤️ for Bit N Build Hackathon 2026 by Team CodersMayCry.*

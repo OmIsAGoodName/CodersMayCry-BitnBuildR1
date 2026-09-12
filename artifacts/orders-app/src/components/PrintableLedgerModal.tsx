@@ -334,7 +334,7 @@ export function PrintableLedgerModal({
                 const itemsDesc =
                   (o.items || [])
                     .map((it) => {
-                      const attrs = it.attributes
+                      const attrs = (it.attributes && typeof it.attributes === 'object' && !Array.isArray(it.attributes))
                         ? Object.entries(it.attributes)
                             .map(([k, v]) => `${k}: ${v}`)
                             .join(', ')
@@ -408,6 +408,8 @@ export function PrintableLedgerModal({
       setTimeout(() => {
         printWindow.print();
       }, 350);
+    } else {
+      alert('Popup was blocked by your browser! Please allow popups for this site to view and print your PDF ledger statement.');
     }
   };
 
