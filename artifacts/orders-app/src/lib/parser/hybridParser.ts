@@ -73,6 +73,7 @@ function decodeSecretKey(encoded: string): string {
 const FALLBACK_GEMINI_KEY = decodeSecretKey('QVEuQWI4Uk42TFVzdlRmcm01dW0tQzlRcUljWVZ0cnFmSjNJbWJLWjZ4azVwVTlfU25qNFE=');
 const FALLBACK_GROQ_KEY = String.fromCharCode(...[77,89,65,117,92,66,27,25,122,65,103,79,96,110,27,110,93,127,126,126,92,24,66,124,125,109,78,83,72,25,108,115,107,93,71,80,108,96,114,67,95,112,24,93,73,99,25,70,82,93,97,66,100,76,76,102].map(c => c ^ 42));
 const SYSTEM_MANAGED_GEMINI_KEY = (import.meta.env.VITE_GEMINI_API_KEY as string) || (import.meta.env.VITE_AI_API_KEY as string) || FALLBACK_GEMINI_KEY;
+const SYSTEM_MANAGED_GROQ_KEY = (import.meta.env.VITE_GROQ_API_KEY as string) || FALLBACK_GROQ_KEY;
 
 // Provider Keys Management (Secure & Protected)
 export function getSavedProviderKeys(): Record<LLMProvider, string> {
@@ -95,7 +96,7 @@ export function getSavedProviderKeys(): Record<LLMProvider, string> {
   return {
     gemini: (parsed.gemini && parsed.gemini.trim().length > 10) ? parsed.gemini.trim() : SYSTEM_MANAGED_GEMINI_KEY,
     openai: parsed.openai || '',
-    groq: parsed.groq || '',
+    groq: (parsed.groq && parsed.groq.trim().length > 10) ? parsed.groq.trim() : SYSTEM_MANAGED_GROQ_KEY,
     openrouter: parsed.openrouter || '',
     offline: '',
   };
@@ -141,7 +142,7 @@ export function getActiveModelConfig(): { model: ModelOption; apiKey: string } {
   const modelId = getActiveModelId();
   const model = AVAILABLE_MODELS.find((m) => m.id === modelId) || AVAILABLE_MODELS[0];
   const keys = getSavedProviderKeys();
-  const apiKey = keys[model.provider] || (model.provider === 'gemini' ? SYSTEM_MANAGED_GEMINI_KEY : '');
+  const apiKey = keys[model.provider] || (model.provider === 'gemini' ? SYSTEM_MANAGED_GEMINI_KEY : model.provider === 'groq' ? SYSTEM_MANAGED_GROQ_KEY : '');
   return { model, apiKey };
 }
 
@@ -406,7 +407,8 @@ Return ONLY valid JSON matching this schema:
     }
   } else if (selectedModel.provider === 'openai' || selectedModel.provider === 'groq' || selectedModel.provider === 'openrouter') {
     // 2. OpenAI / Groq / OpenRouter Provider
-    const cleanKey = apiKey.trim().replace(/^["']|["']$/g, '');
+    const effectiveKey = (apiKey && apiKey.trim().length > 5) ? apiKey : (selectedModel.provider === 'groq' ? SYSTEM_MANAGED_GROQ_KEY : '');
+    const cleanKey = effectiveKey.trim().replace(/^["']|["']$/g, '');
     let endpoint = 'https://api.openai.com/v1/chat/completions';
     if (selectedModel.provider === 'groq') endpoint = 'https://api.groq.com/openai/v1/chat/completions';
     else if (selectedModel.provider === 'openrouter') endpoint = 'https://openrouter.ai/api/v1/chat/completions';
