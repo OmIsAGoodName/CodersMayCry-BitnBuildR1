@@ -1,6 +1,7 @@
 # Vendora — Sovereign Offline-First Commerce & Order Ledger for Bharat
 > **Bit N Build Hackathon 2026** · **Track 3: Jan Jeevan (Technology for Everyday Life & Real-World Indian Challenges)**  
-> **Team**: CodersMayCry
+> **Team**: CodersMayCry  
+> 🌐 **Live Cloud Deployment**: [https://vendora-bridge.onrender.com](https://vendora-bridge.onrender.com)
 
 ---
 
