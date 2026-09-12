@@ -55,7 +55,7 @@ async function transcribeAudioWithGemini(audioBlob: Blob, apiKey: string): Promi
             }
           },
           {
-            text: 'Transcribe what is spoken in this audio in English or Hinglish. Return ONLY the transcribed query text, nothing else.'
+            text: 'Transcribe what is spoken in this audio query in English or Hinglish (e.g. "Whats due today", "Kiska paisa baki hai", "Asha ka pichla order"). Return ONLY the exact transcribed words, nothing else.'
           }
         ]
       }]
@@ -73,6 +73,8 @@ async function transcribeAudioWithGemini(audioBlob: Blob, apiKey: string): Promi
 export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
   const [query, setQuery] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState('');
+  const [speechState, setSpeechState] = useState<'idle' | 'listening' | 'sound_detected' | 'speech_detected'>('idle');
   const [voiceStatus, setVoiceStatus] = useState<string>('');
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
 
@@ -80,7 +82,6 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
   const recognitionRef = useRef<any>(null);
-  const speechCapturedRef = useRef<boolean>(false);
 
   const todayStr = dateOnly();
   const next7DaysStr = dateOffset(7);
@@ -140,7 +141,7 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
     const q = query.toLowerCase().trim();
     if (!q) return 'all';
 
-    // 1. Check for specific customer mention in query (e.g. "Asha ka pichla order", "Rahul")
+    // 1. Check for specific customer mention in query
     for (const customerName of customerHistoryMap.keys()) {
       const cLow = customerName.toLowerCase();
       if (q.includes(cLow)) {
@@ -204,135 +205,45 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
     return 'search';
   }, [query, customerHistoryMap, selectedCustomer]);
 
-  // Start Voice Recording (Dual: MediaRecorder + Web Speech API + Gemini Fallback)
-  const toggleVoice = async () => {
-    if (typeof window === 'undefined') return;
-
-    if (isListening) {
-      await stopVoice();
-      return;
-    }
-
-    try {
-      speechCapturedRef.current = false;
-      audioChunksRef.current = [];
-
-      // 1. Request actual microphone media stream from browser
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-
-      // 2. Start MediaRecorder to capture audio
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
-        ? 'audio/webm'
-        : MediaRecorder.isTypeSupported('audio/mp4')
-        ? 'audio/mp4'
-        : '';
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {
-          audioChunksRef.current.push(e.data);
-        }
-      };
-      recorder.start(250);
-
-      setIsListening(true);
-      setVoiceStatus('Recording audio... Speak your question in English or Hinglish');
-
-      // 3. Simultaneously launch Web Speech Recognition for instant 0ms typing if supported
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        try {
-          const recognition = new SpeechRecognition();
-          recognitionRef.current = recognition;
-          recognition.lang = 'en-IN';
-          recognition.continuous = true;
-          recognition.interimResults = true;
-          recognition.maxAlternatives = 1;
-
-          recognition.onresult = (event: any) => {
-            let interim = '';
-            let final = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-              if (event.results[i].isFinal) {
-                final += event.results[i][0].transcript;
-              } else {
-                interim += event.results[i][0].transcript;
-              }
-            }
-            const heard = final || interim;
-            if (heard) {
-              setQuery(heard);
-              speechCapturedRef.current = true;
-            }
-          };
-
-          recognition.onerror = (e: any) => {
-            console.warn('SpeechRecognition notice:', e.error);
-          };
-
-          recognition.start();
-        } catch (recErr) {
-          console.warn('SpeechRecognition start failed, will rely on audio recording:', recErr);
-        }
-      }
-    } catch (err: any) {
-      console.error('Microphone access failed:', err);
-      setIsListening(false);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setVoiceStatus('Microphone permission blocked. Please allow microphone in browser URL bar.');
-      } else {
-        setVoiceStatus('Could not access microphone. Please check device audio settings.');
-      }
-    }
-  };
-
-  // Stop Recording & Finalize Transcription
+  // Stop Recording / Listening
   const stopVoice = async () => {
     setIsListening(false);
+    setSpeechState('idle');
 
-    // Stop Speech Recognition if active
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch {}
       recognitionRef.current = null;
     }
 
-    // Stop MediaRecorder and process recorded audio chunks
+    // Process audio if fallback MediaRecorder was used
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       const recorder = mediaRecorderRef.current;
       const audioBlobPromise = new Promise<Blob>((resolve) => {
         recorder.onstop = () => {
-          const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-          resolve(blob);
+          resolve(new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' }));
         };
       });
       try { recorder.stop(); } catch {}
 
-      // Stop audio stream tracks
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
 
-      // If speech recognition did not capture text, transcribe via Gemini
-      if (!speechCapturedRef.current) {
-        const audioBlob = await audioBlobPromise;
-        if (audioBlob.size > 800) {
-          const geminiKey = getSavedProviderKeys().gemini;
-          if (geminiKey) {
-            setVoiceStatus('Transcribing recorded audio with Google Gemini...');
-            try {
-              const transcribed = await transcribeAudioWithGemini(audioBlob, geminiKey);
-              if (transcribed) {
-                setQuery(transcribed);
-                setVoiceStatus(`Transcribed: "${transcribed}"`);
-                return;
-              }
-            } catch (gemErr) {
-              console.warn('Gemini audio transcription failed:', gemErr);
-            }
+      setVoiceStatus('Transcribing audio with Google Gemini...');
+      const audioBlob = await audioBlobPromise;
+      const geminiKey = getSavedProviderKeys().gemini;
+      if (geminiKey && audioBlob.size > 800) {
+        try {
+          const transcribed = await transcribeAudioWithGemini(audioBlob, geminiKey);
+          if (transcribed) {
+            setQuery(transcribed);
+            setLiveTranscript(transcribed);
+            setVoiceStatus(`Transcribed: "${transcribed}"`);
+            return;
           }
+        } catch (gemErr) {
+          console.warn('Gemini audio transcription failed:', gemErr);
         }
       }
     }
@@ -342,10 +253,121 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
       streamRef.current = null;
     }
 
-    if (speechCapturedRef.current) {
-      setVoiceStatus('Audio query transcribed successfully!');
+    if (liveTranscript) {
+      setVoiceStatus(`Transcribed: "${liveTranscript}"`);
     } else {
-      setVoiceStatus('Recording stopped. Tap mic or any sample chip below to query.');
+      setVoiceStatus('Voice query complete.');
+    }
+  };
+
+  // Start Live Speech Recognition (Google Keyboard / Gboard live streaming style)
+  const toggleVoice = async () => {
+    if (typeof window === 'undefined') return;
+
+    if (isListening) {
+      await stopVoice();
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    // PRIMARY PATH: Web Speech API for instantaneous live word-by-word streaming typing
+    if (SpeechRecognition) {
+      try {
+        if (recognitionRef.current) {
+          try { recognitionRef.current.abort(); } catch {}
+          recognitionRef.current = null;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognitionRef.current = recognition;
+        recognition.lang = 'en-IN'; // Google's Indian bilingual speech model for English & Hinglish
+        recognition.continuous = true;
+        recognition.interimResults = true; // Enables instant live typing while speaking
+        recognition.maxAlternatives = 1;
+
+        setIsListening(true);
+        setLiveTranscript('');
+        setSpeechState('listening');
+        setVoiceStatus('🎙️ Listening... Speak now (say "whats due today" or "kiska paisa baki hai")');
+
+        recognition.onaudiostart = () => {
+          setSpeechState('listening');
+        };
+
+        recognition.onsoundstart = () => {
+          setSpeechState('sound_detected');
+        };
+
+        recognition.onspeechstart = () => {
+          setSpeechState('speech_detected');
+        };
+
+        // Stream words live as you speak (Google Keyboard style)
+        recognition.onresult = (event: any) => {
+          let interim = '';
+          let final = '';
+
+          for (let i = 0; i < event.results.length; ++i) {
+            const transcript = event.results[i][0]?.transcript || '';
+            if (event.results[i].isFinal) {
+              final += (final ? ' ' : '') + transcript;
+            } else {
+              interim += (interim ? ' ' : '') + transcript;
+            }
+          }
+
+          const liveWords = final ? (interim ? `${final} ${interim}` : final) : interim;
+          if (liveWords) {
+            setQuery(liveWords);
+            setLiveTranscript(liveWords);
+          }
+        };
+
+        recognition.onerror = (event: any) => {
+          console.warn('SpeechRecognition error:', event.error);
+          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            setIsListening(false);
+            setVoiceStatus('⚠️ Microphone permission blocked. Click the lock/settings icon in your browser URL bar to allow microphone.');
+          } else if (event.error === 'network') {
+            setIsListening(false);
+            setVoiceStatus('⚠️ Speech connection timeout. Tap mic to retry.');
+          }
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+          setSpeechState('idle');
+        };
+
+        recognition.start();
+        return;
+      } catch (recErr) {
+        console.warn('SpeechRecognition start failed, trying MediaRecorder fallback:', recErr);
+      }
+    }
+
+    // FALLBACK PATH: For browsers without SpeechRecognition (Firefox / Safari restrictions)
+    try {
+      setIsListening(true);
+      setLiveTranscript('');
+      setVoiceStatus('Recording audio query via microphone...');
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      audioChunksRef.current = [];
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      recorder.start(250);
+    } catch (err: any) {
+      setIsListening(false);
+      setVoiceStatus('⚠️ Could not access microphone. Please check browser microphone permissions.');
     }
   };
 
@@ -372,25 +394,25 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
             className="query-input"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder='Ask anything in English or Hinglish: "Kiska paisa baki hai?", "What is due today?", "Asha ka pichla order", "Hafte ka load"'
+            placeholder='Ask anything in English or Hinglish: "Whats due today?", "Kiska paisa baki hai?", "Asha ka pichla order", "Hafte ka load"'
             data-testid="input-query-desk"
           />
           {query && (
-            <button className="clear-btn" onClick={() => { setQuery(''); setSelectedCustomer(null); setVoiceStatus(''); }} title="Clear query">
+            <button className="clear-btn" onClick={() => { setQuery(''); setSelectedCustomer(null); setLiveTranscript(''); setVoiceStatus(''); }} title="Clear query">
               ✕
             </button>
           )}
           <button
             className={`voice-btn ${isListening ? 'listening' : ''}`}
             onClick={toggleVoice}
-            title={isListening ? 'Recording audio... Tap to stop' : 'Record Voice Query (English & Hinglish)'}
+            title={isListening ? 'Live speech recording active... Tap to stop' : 'Live Voice Query (Google Keyboard style)'}
             data-testid="button-voice-query"
           >
             {isListening ? <MicOff size={16} /> : <Mic size={16} />}
           </button>
         </div>
 
-        {/* Live Audio Recording Banner */}
+        {/* Live Gboard-Style Real-Time Speech Feedback Banner */}
         {isListening && (
           <div className="voice-listening-banner">
             <div className="voice-wave-bars">
@@ -400,11 +422,23 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
               <span className="wave-bar" />
               <span className="wave-bar" />
             </div>
-            <span className="voice-listening-text">
-              <strong>Recording Audio (Hinglish & English)...</strong> Speak your question (e.g. <em>"Kiska paisa baki hai?"</em>)
-            </span>
+            <div className="voice-live-wrap">
+              <div className="voice-live-badge">
+                {speechState === 'speech_detected' ? '🗣️ LIVE TRANSCRIBING' : speechState === 'sound_detected' ? '🔊 HEARING AUDIO' : '🎙️ LISTENING'}
+              </div>
+              <div className="voice-live-text">
+                {liveTranscript ? (
+                  <>
+                    <strong>"{liveTranscript}"</strong>
+                    <span className="voice-cursor">|</span>
+                  </>
+                ) : (
+                  <em>Speak now (say e.g. "whats due today" or "kiska paisa baki hai")...</em>
+                )}
+              </div>
+            </div>
             <button className="voice-stop-btn" onClick={stopVoice}>
-              Done / Stop
+              Done ✓
             </button>
           </div>
         )}
