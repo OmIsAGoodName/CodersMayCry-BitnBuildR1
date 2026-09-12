@@ -189,7 +189,7 @@ export class WhatsAppBridgeService extends EventEmitter {
 
     // Burst debounce buffer map: senderPhone -> buffer state
     this.messageBuffers = new Map();
-    this.DEBOUNCE_MS = 3000;
+    this.DEBOUNCE_MS = 8000;
   }
 
   getStatus() {
@@ -203,6 +203,7 @@ export class WhatsAppBridgeService extends EventEmitter {
       autoIngestThreshold: this.autoIngestThreshold,
       recentCount: this.recentMessages.length,
       activeBufferCount: this.messageBuffers.size,
+      debounceMs: this.DEBOUNCE_MS,
     };
   }
 
@@ -210,9 +211,10 @@ export class WhatsAppBridgeService extends EventEmitter {
     return this.recentMessages;
   }
 
-  setSettings({ autoReply, autoIngestThreshold }) {
+  setSettings({ autoReply, autoIngestThreshold, debounceMs }) {
     if (typeof autoReply === 'boolean') this.autoReply = autoReply;
     if (typeof autoIngestThreshold === 'number') this.autoIngestThreshold = autoIngestThreshold;
+    if (typeof debounceMs === 'number' && debounceMs >= 1000) this.DEBOUNCE_MS = debounceMs;
     this.emit('settings', this.getStatus());
   }
 

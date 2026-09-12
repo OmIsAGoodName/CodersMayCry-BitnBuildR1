@@ -18,6 +18,7 @@ interface WhatsAppStatus {
   autoIngestThreshold: number;
   recentCount: number;
   activeBufferCount: number;
+  debounceMs?: number;
 }
 
 interface ChatActivity {
@@ -132,6 +133,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
     autoIngestThreshold: 0.75,
     recentCount: 0,
     activeBufferCount: 0,
+    debounceMs: 8000,
   });
 
   const [activeActivity, setActiveActivity] = useState<ChatActivity | null>(null);
@@ -194,9 +196,10 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
             setActiveActivity(activity);
             clearTimeout(activityTimerRef.current);
             // Hide aggregating banner after debounce window + grace period
+            const waitMs = (status.debounceMs || 8000) + 2000;
             activityTimerRef.current = setTimeout(() => {
               setActiveActivity(null);
-            }, 3600);
+            }, waitMs);
           } catch {}
         });
 
@@ -312,6 +315,18 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
     } catch {
       onNotify('Failed to disconnect WhatsApp');
     }
+  };
+
+  const handleSetDebounce = async (ms: number) => {
+    setStatus((prev) => ({ ...prev, debounceMs: ms }));
+    try {
+      await fetch(getApiUrl('/api/whatsapp/settings'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ debounceMs: ms }),
+      });
+      onNotify(`Burst debounce window set to ${ms / 1000}s`);
+    } catch {}
   };
 
   const handleToggleAutoReply = async () => {
@@ -572,7 +587,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
             </div>
           </div>
           <div style={{ fontSize: 11, font: '11px var(--app-font-mono)', color: 'hsl(var(--muted-foreground))', textAlign: 'right' }}>
-            Debounce buffer: 3.0s window...
+            Debounce buffer: {((status.debounceMs || 8000) / 1000).toFixed(0)}s window...
           </div>
         </div>
       )}
@@ -585,9 +600,31 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
             <div className="panel-head">
               <div>
                 <h2>Live Inbound Order Feed</h2>
-                <span className="minor">Automatically parsed with 3-second multi-turn debouncing</span>
+                <span className="minor">Automatically parsed with {((status.debounceMs || 8000) / 1000).toFixed(0)}s multi-turn debouncing</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                  <label htmlFor="debounce-select" style={{ color: 'hsl(var(--muted-foreground))' }}>Burst Buffer:</label>
+                  <select
+                    id="debounce-select"
+                    value={status.debounceMs || 8000}
+                    onChange={(e) => handleSetDebounce(parseInt(e.target.value, 10))}
+                    style={{
+                      padding: '4px 8px',
+                      borderRadius: 6,
+                      background: 'hsl(var(--muted)/.4)',
+                      border: '1px solid hsl(var(--border))',
+                      color: 'inherit',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value={5000}>5s (Fast)</option>
+                    <option value={8000}>8s (Recommended)</option>
+                    <option value={10000}>10s (Relaxed)</option>
+                    <option value={15000}>15s (Slow Typer)</option>
+                  </select>
+                </div>
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
                   <input
                     type="checkbox"
