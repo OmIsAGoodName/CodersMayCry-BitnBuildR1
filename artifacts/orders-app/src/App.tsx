@@ -10,7 +10,7 @@ import { type ReactNode, useEffect, useState, useRef, useTransition } from 'reac
 import { Link, Route, Switch, useLocation } from 'wouter';
 import {
   Sun, Moon, AlertTriangle, ArrowRight, BarChart3, CalendarDays, Check, CheckCircle2, ClipboardList,
-  CloudOff, CloudUpload, Database, Download, FileJson, Filter, Home, Inbox, IndianRupee,
+  CloudOff, Database, Download, FileJson, Filter, Home, Inbox, IndianRupee,
   Layers3, MoreHorizontal, Plus, RefreshCw, RotateCcw, Search, Mic, MicOff, Settings as SettingsIcon,
   Sparkles, Trash2, Upload, Wifi, WifiOff, X, Zap, Cpu, Play, Key, SlidersHorizontal, Copy, User,
   Menu, ArrowLeft, LogOut
@@ -33,11 +33,9 @@ import { parseUniversalMessage } from '@/lib/parser/universalParser';
 import { QueryDesk } from '@/components/QueryDesk';
 import { transcribeAudio, getSupportedAudioMimeType, setupAudioAnalyser, isOperaOrNonChrome } from '@/lib/speech/audioTranscriber';
 
-import { OnboardingModal } from '@/components/OnboardingModal';
 import { DayTracker, applyDayTheme } from '@/components/DayTracker';
 import { BrandLogo } from '@/components/BrandLogo';
 import { AuthScreen } from '@/components/AuthScreen';
-import { runScenario1, runScenario2, runScenario3, ScenarioTestResult } from '@/lib/sync/conflictScenarios';
 
 const queryClient = new QueryClient();
 const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -153,7 +151,6 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
     { href: '/inbox', label: 'Universal Inbox', icon: Inbox },
     { href: '/employees', label: 'Employees', icon: UsersIcon },
     { href: '/query', label: 'Query Desk', icon: BarChart3 },
-    { href: '/sync', label: 'CRDT Sync & Sim', icon: CloudUpload },
     { href: '/settings', label: 'Settings', icon: SettingsIcon },
   ];
 
@@ -218,7 +215,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
               <Icon />
               <span>{label}</span>
               {href === '/inbox' && <span style={{ marginLeft: 'auto', font: '10px var(--app-font-mono)', color: 'hsl(var(--secondary))', fontWeight: 700 }}>HYBRID</span>}
-              {href === '/sync' && pendingSyncCount > 0 && <span style={{ marginLeft: 'auto', font: '10px var(--app-font-mono)', background: 'hsl(var(--secondary))', color: '#000', padding: '1px 6px', borderRadius: 99, fontWeight: 700 }}>{pendingSyncCount}</span>}
+              
             </Link>
           ))}
         </nav>
@@ -381,11 +378,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
                         HYBRID
                       </span>
                     )}
-                    {href === '/sync' && pendingSyncCount > 0 && (
-                      <span style={{ marginLeft: 'auto', font: '10px var(--app-font-mono)', background: 'hsl(var(--secondary))', color: '#000', padding: '1px 6px', borderRadius: 99, fontWeight: 700 }}>
-                        {pendingSyncCount}
-                      </span>
-                    )}
+
                   </Link>
                 ))}
               </nav>
@@ -1115,14 +1108,6 @@ function InboxPage({
   const activeModel = AVAILABLE_MODELS.find((m) => m.id === selectedModelId) || AVAILABLE_MODELS[0];
   const activeKey = providerKeys[activeModel.provider] || '';
 
-  const sampleMessages = [
-    'bhaiya main Ramesh. 2 kurta navy blue, chest 40, parso chahiye. total ₹1850, 500 advance diya pichli baar jaisa.',
-    'main Priya bol rahi hu. Kal dopahar 1 baje 3 veg lunch thali chahiye. 720 rupaye bhej diye.',
-    '1kg chocolate cake with eggless base, write Happy Birthday Aryan, 15th ko chahiye. 1200 rs',
-    'uncle switchboard mein sparking ho rahi hai hall mein, kal subah aakar check kardo. - Vikram',
-    'hi bhaiya please call back immediately'
-  ];
-
   const handleModelChange = (newModelId: string) => {
     setSelectedModelId(newModelId);
     setActiveModelId(newModelId);
@@ -1275,91 +1260,6 @@ function InboxPage({
         }
       />
 
-      {/* Model Switcher & Provider Key Bar */}
-      <div style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--card-border))', borderRadius: 14, padding: '14px 18px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 280 }}>
-          <Sparkles size={18} color="hsl(var(--secondary))" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
-            <span style={{ fontSize: 11, font: '10px var(--app-font-mono)', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', fontWeight: 700 }}>
-              Active AI Parser Engine
-            </span>
-            <select
-              className="input"
-              style={{ minHeight: 34, padding: '4px 10px', fontSize: 13, fontWeight: 600 }}
-              value={selectedModelId}
-              onChange={(e) => handleModelChange(e.target.value)}
-            >
-              {AVAILABLE_MODELS.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {activeModel.provider !== 'offline' && (
-            <span style={{ fontSize: 12, font: '11px var(--app-font-mono)', color: 'hsl(var(--muted-foreground))' }}>
-              {hasCustomApiKey(activeModel.provider) ? '🔑 Custom Key' : '✨ Managed AI'}
-            </span>
-          )}
-          <span className={activeKey || activeModel.provider === 'offline' ? 'badge-source-ai' : 'badge-source-local'}>
-            {activeModel.provider === 'offline' ? '⚡ 100% Offline' : '✨ Online Ready'}
-          </span>
-          {activeModel.provider !== 'offline' && (
-            <button
-              className="btn btn-quiet"
-              style={{ padding: '6px 12px', fontSize: 11 }}
-              onClick={() => {
-                setKeyInput('');
-                setShowKeyModal(!showKeyModal);
-              }}
-            >
-              <Key size={13} /> {showKeyModal ? 'Close' : hasCustomApiKey(activeModel.provider) ? 'Change Key' : 'Input Custom Key'}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {showKeyModal && activeModel.provider !== 'offline' && (
-        <div style={{ background: 'hsl(var(--muted)/.4)', border: '1px solid hsl(var(--border))', borderRadius: 12, padding: 16, marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <div className="eyebrow">Input Custom API Key ({activeModel.label})</div>
-            {hasCustomApiKey(activeModel.provider) && (
-              <button
-                className="btn btn-quiet"
-                style={{ padding: '2px 8px', fontSize: 10 }}
-                onClick={() => {
-                  resetToManagedApiKey(activeModel.provider);
-                  setProviderKeys(getSavedProviderKeys());
-                  setShowKeyModal(false);
-                  onNotify('Reset to Vendora Managed AI');
-                }}
-              >
-                Reset to Managed Default AI
-              </button>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              type="password"
-              className="input"
-              value={keyInput}
-              onChange={(e) => setKeyInput(e.target.value)}
-              placeholder={`Paste your personal ${activeModel.provider.toUpperCase()} API key here`}
-              style={{ flex: 1 }}
-            />
-            <button className="btn btn-primary" onClick={handleSaveKeyForCurrent}>
-              Save Key
-            </button>
-          </div>
-          <small style={{ display: 'block', color: 'hsl(var(--muted-foreground))', marginTop: 6, fontSize: 11 }}>
-            🔒 Key is stored strictly on this device's browser memory and cannot be viewed or copied by others.
-          </small>
-        </div>
-      )}
-
       <input
         id="batch-upload-input"
         hidden
@@ -1455,17 +1355,6 @@ function InboxPage({
                 <Mic size={12} />
                 {isListening ? 'Listening…' : 'Speak Order 🎙️'}
               </button>
-              <span style={{ fontSize: 11, font: '10px var(--app-font-mono)', color: 'hsl(var(--muted-foreground))', alignSelf: 'center' }}>Try sample:</span>
-              {sampleMessages.map((sample, idx) => (
-                <button
-                  key={idx}
-                  className="btn btn-quiet"
-                  style={{ padding: '4px 8px', fontSize: 11 }}
-                  onClick={() => setMessage(sample)}
-                >
-                  Sample #{idx + 1}
-                </button>
-              ))}
             </div>
 
             <div className="parser-hint">
@@ -1697,182 +1586,6 @@ function InboxPage({
   );
 }
 
-function SyncPage({
-  orders,
-  oplog,
-  conflicts,
-  onResolveConflict,
-}: {
-  orders: Order[];
-  oplog: OperationLog[];
-  conflicts: ConflictRecord[];
-  onResolveConflict: (id: string, resolution: 'local' | 'remote' | 'merge') => void;
-}) {
-  const [simResults, setSimResults] = useState<ScenarioTestResult[] | null>(null);
-  const pending = orders.filter((o) => o.pendingSync);
-
-  const runAllSimulations = () => {
-    const s1 = runScenario1();
-    const s2 = runScenario2();
-    const s3 = runScenario3();
-    setSimResults([s1, s2, s3]);
-  };
-
-  return (
-    <div className="page">
-      <Header
-        eyebrow="Deterministic CRDT Engine"
-        title="Sync & Conflict Resolution"
-        subtitle="Field-level LWW-Element-Set CRDT with Hybrid Logical Clocks (HLC) guaranteeing mathematical convergence."
-        action={
-          <button className="btn btn-primary" onClick={runAllSimulations} data-testid="button-run-sim">
-            <Play size={14} /> Run Test C Scripted Scenarios
-          </button>
-        }
-      />
-
-      <div className="stats-grid">
-        <div className="stat-card featured">
-          <div className="stat-label">Pending Sync Ops</div>
-          <div className="stat-value">{pending.length}</div>
-          <div className="stat-meta">Local sovereign mutations queued</div>
-          <CloudUpload className="stat-icon" size={48} />
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-label">Convergence Rule</div>
-          <div className="stat-value" style={{ fontSize: 24 }}>Field LWW + HLC</div>
-          <div className="stat-meta">Deterministic tie-breaking</div>
-          <Cpu className="stat-icon" size={48} />
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-label">Conflict Audit Hub</div>
-          <div className="stat-value">{conflicts.filter((c) => !c.resolved).length}</div>
-          <div className="stat-meta">Zero silent data loss</div>
-          <AlertTriangle className="stat-icon" size={48} />
-        </div>
-      </div>
-
-      {/* Dual Device Simulator Results */}
-      {simResults && (
-        <section className="panel" style={{ marginBottom: 24 }}>
-          <div className="panel-head">
-            <div>
-              <h2>Test C Scripted Conflict Scenarios Verification</h2>
-              <span className="minor">Mathematical proof of convergence</span>
-            </div>
-            <div className="convergence-badge">
-              <CheckCircle2 size={14} /> ALL SCENARIOS CONVERGED (0-Byte Diff)
-            </div>
-          </div>
-
-          <div style={{ padding: '0 22px 22px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-            {simResults.map((sim, i) => (
-              <div key={i} className="sim-device-panel">
-                <div className="sim-head">
-                  <strong>{sim.scenarioName}</strong>
-                  <span className="tag-today">Permutations A→B ≡ B→A: {sim.isDeterministic ? 'MATCH (0 bytes)' : 'FAIL'}</span>
-                </div>
-                <p className="subheading" style={{ marginTop: 0 }}>{sim.description}</p>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
-                  <div className="review-item">
-                    <label>Step Sequence</label>
-                    {sim.steps.map((st, idx) => (
-                      <div key={idx} style={{ fontSize: 12, marginTop: 4 }}>
-                        <strong>{st.device}:</strong> {st.action} <small style={{ color: 'hsl(var(--muted-foreground))' }}>({st.hlc})</small>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="review-item">
-                    <label>Final Deterministic State</label>
-                    <div style={{ fontSize: 12 }}>
-                      <strong>Amount:</strong> {money(sim.reconnectAB_Final.amount)} · <strong>Due:</strong> {sim.reconnectAB_Final.dueDate} · <strong>Status:</strong> {sim.reconnectAB_Final.status}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Conflict Resolution Audit Log */}
-      {conflicts.filter((c) => !c.resolved).length > 0 && (
-        <section className="panel" style={{ marginBottom: 24 }}>
-          <div className="panel-head">
-            <div>
-              <h2>Active Conflicts For Operator Review</h2>
-              <span className="minor">Surfaced transparently</span>
-            </div>
-          </div>
-          <div style={{ padding: '0 22px 22px' }}>
-            {conflicts
-              .filter((c) => !c.resolved)
-              .map((c) => (
-                <div key={c.id} className="conflict">
-                  <div className="eyebrow">Competing edit on order #{c.orderId.slice(-6)}</div>
-                  <h3>Field: {c.field} modified concurrently on two devices</h3>
-                  <div className="conflict-values">
-                    <div className="value-box">
-                      <em>Local Device ({c.localAt})</em>
-                      <strong>{c.localValue}</strong>
-                    </div>
-                    <div className="value-box">
-                      <em>Remote Device ({c.remoteAt})</em>
-                      <strong>{c.remoteValue}</strong>
-                    </div>
-                  </div>
-                  <div className="action-group" style={{ marginTop: 14 }}>
-                    <button className="btn btn-quiet" onClick={() => onResolveConflict(c.id, 'local')}>
-                      Keep Local
-                    </button>
-                    <button className="btn btn-quiet" onClick={() => onResolveConflict(c.id, 'remote')}>
-                      Accept Remote
-                    </button>
-                    <button className="btn btn-primary" onClick={() => onResolveConflict(c.id, 'merge')}>
-                      Merge Both
-                    </button>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </section>
-      )}
-
-      {/* Local Operation Oplog */}
-      <section className="panel">
-        <div className="panel-head">
-          <div>
-            <h2>Local Write-Ahead Operation Log (WAL)</h2>
-            <span className="minor">Persisted in IndexedDB</span>
-          </div>
-          <Database size={18} color="hsl(var(--muted-foreground))" />
-        </div>
-        <div style={{ padding: '0 22px 22px' }}>
-          {oplog.length ? (
-            oplog
-              .slice(-6)
-              .reverse()
-              .map((op) => (
-                <div className="op-row" key={op.id}>
-                  <span className="op-bullet" />
-                  <span>
-                    <strong>{op.action} · {op.field}</strong>
-                    <small>Order {op.orderId.slice(-6)} · HLC: {op.hlc} · {new Date(op.at).toLocaleTimeString()}</small>
-                  </span>
-                </div>
-              ))
-          ) : (
-            <EmptyState icon={CloudOff} title="Oplog is clean" text="Any local edit will record a structured operation entry." />
-          )}
-        </div>
-      </section>
-    </div>
-  );
-}
-
 function SettingsPage({
   settings,
   online,
@@ -1880,7 +1593,6 @@ function SettingsPage({
   onExport,
   onImport,
   onReset,
-  onOpenOnboarding,
   onNotify,
 }: {
   settings: Settings;
@@ -1889,7 +1601,6 @@ function SettingsPage({
   onExport: () => void;
   onImport: (file: File) => void;
   onReset: () => void;
-  onOpenOnboarding: () => void;
   onNotify: (msg: string) => void;
 }) {
   const { currentUser, logout } = useOrgAuth();
@@ -1962,9 +1673,6 @@ function SettingsPage({
               data-testid="button-save-settings"
             >
               <Check /> Save Profile
-            </button>
-            <button className="btn btn-quiet" onClick={onOpenOnboarding}>
-              <User size={14} /> Re-run Setup Wizard
             </button>
           </div>
         </section>
@@ -2228,7 +1936,6 @@ function App() {
   const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [toast, setToast] = useState('');
   const [editing, setEditing] = useState<Order | null | undefined>(undefined);
-  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Initialize Sovereign Offline Database & Online Reconnection Listeners
   useEffect(() => {
@@ -2524,15 +2231,12 @@ function App() {
         <Route path="/query">
           <div className="page">
             <Header
-              eyebrow="Objective 4"
+              eyebrow="AI Store Assistant"
               title="Operational Query Desk"
               subtitle="Natural Language and Voice query layer answering all core operational questions with zero scrolling."
             />
             <QueryDesk orders={orders} settings={settings} onEditOrder={setEditing} />
           </div>
-        </Route>
-        <Route path="/sync">
-          <SyncPage orders={orders} oplog={oplog} conflicts={conflicts} onResolveConflict={resolveConflict} />
         </Route>
         <Route path="/settings">
           <SettingsPage
@@ -2542,7 +2246,6 @@ function App() {
             onExport={exportWorkspace}
             onImport={importWorkspace}
             onReset={resetWorkspace}
-            onOpenOnboarding={() => setShowOnboarding(true)}
             onNotify={notify}
           />
         </Route>
@@ -2553,17 +2256,6 @@ function App() {
         <OrderModal order={editing} onClose={() => setEditing(undefined)} onSave={saveOrder} onDelete={deleteOrder} />
       )}
 
-      {showOnboarding && (
-        <OnboardingModal
-          onClose={() => setShowOnboarding(false)}
-          currentSettings={settings}
-          onComplete={(newSettings) => {
-            updateSettings(newSettings);
-            setShowOnboarding(false);
-            notify(`Welcome, ${newSettings.operatorName}! Sovereign workspace initialized.`);
-          }}
-        />
-      )}
 
       {toast && (
         <div className="toast" role="status" data-testid="status-toast">
