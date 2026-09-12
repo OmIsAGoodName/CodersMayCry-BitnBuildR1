@@ -32,14 +32,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=5173
 
-# Copy production static assets
+# Copy production static assets and dependencies
 COPY --from=builder /app/artifacts/orders-app/dist/public ./public
+COPY --from=builder /app/node_modules ./node_modules
 COPY scripts/ ./scripts/
 COPY package.json ./
 
-# Install lightweight static file server
-RUN npm install -g serve
-
 EXPOSE 5173
 
-CMD ["serve", "-s", "public", "-l", "5173"]
+CMD ["node", "scripts/serve.mjs"]

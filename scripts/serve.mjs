@@ -91,7 +91,9 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log('======================================================\n');
   console.log('Press Ctrl+C to stop the server.\n');
 
-  // Auto-open browser
-  const startCmd = process.platform === 'win32' ? `start ${url}` : process.platform === 'darwin' ? `open ${url}` : `xdg-open ${url}`;
-  exec(startCmd, () => {});
+  // Auto-open browser only on local desktop
+  if (!process.env.RENDER && !process.env.RAILWAY_ENVIRONMENT && process.env.NODE_ENV !== 'production' && !process.env.CI) {
+    const startCmd = process.platform === 'win32' ? `start ${url}` : process.platform === 'darwin' ? `open ${url}` : `xdg-open ${url}`;
+    exec(startCmd, () => {});
+  }
 });

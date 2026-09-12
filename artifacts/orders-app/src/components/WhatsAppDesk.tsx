@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   MessageSquare, QrCode, Wifi, WifiOff, CheckCircle2, AlertTriangle,
   RotateCcw, Sparkles, Send, Phone, User, Calendar, IndianRupee,
-  Layers, Check, Copy, RefreshCw, Volume2, ShieldCheck, Zap
+  Layers, Check, Copy, RefreshCw, Volume2, ShieldCheck, Zap,
+  Globe, Server, Link2, ExternalLink
 } from 'lucide-react';
 import { Order } from '@/lib/storage/offlineDb';
 import { parseUniversalMessage } from '@/lib/parser/universalParser';
@@ -142,6 +143,17 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
   const [simName, setSimName] = useState(PRESET_SIMULATIONS[0].name);
   const [isSimulating, setIsSimulating] = useState(false);
   const [savedOrderIds, setSavedOrderIds] = useState<Set<string>>(new Set());
+  const [bridgeUrl, setBridgeUrl] = useState<string>(() => {
+    return localStorage.getItem('vendora_wa_bridge_url') || (import.meta.env.VITE_WHATSAPP_BACKEND_URL || '');
+  });
+  const [showBridgeModal, setShowBridgeModal] = useState(false);
+  const [customBridgeInput, setCustomBridgeInput] = useState('');
+
+  const getApiUrl = (endpoint: string) => {
+    const base = bridgeUrl.trim().replace(/\/+$/, '');
+    return base ? `${base}${endpoint}` : endpoint;
+  };
+
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const activityTimerRef = useRef<any>(null);
@@ -152,7 +164,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
 
     const setupSSE = () => {
       try {
-        es = new EventSource('/api/whatsapp/stream');
+        es = new EventSource(getApiUrl('/api/whatsapp/stream'));
         eventSourceRef.current = es;
 
         es.addEventListener('status', (e) => {
@@ -230,12 +242,12 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
     setupSSE();
 
     // Fetch initial status & recent messages
-    fetch('/api/whatsapp/status')
+    fetch(getApiUrl('/api/whatsapp/status'))
       .then((r) => r.json())
       .then((data) => setStatus(data))
       .catch(() => {});
 
-    fetch('/api/whatsapp/recent')
+    fetch(getApiUrl('/api/whatsapp/recent'))
       .then((r) => r.json())
       .then((data) => {
         if (data.messages && Array.isArray(data.messages)) {
@@ -250,12 +262,12 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
         eventSourceRef.current.close();
       }
     };
-  }, [autoIngest, status.autoIngestThreshold, onNotify, onSaveOrder]);
+  }, [bridgeUrl, autoIngest, status.autoIngestThreshold, onNotify, onSaveOrder]);
 
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const res = await fetch('/api/whatsapp/connect', { method: 'POST' });
+      const res = await fetch(getApiUrl('/api/whatsapp/connect'), { method: 'POST' });
       if (!res.ok) throw new Error('Endpoint unreachable');
     } catch (err) {
       setConnecting(false);
@@ -265,7 +277,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
 
   const handleDisconnect = async () => {
     try {
-      await fetch('/api/whatsapp/disconnect', { method: 'POST' });
+      await fetch(getApiUrl('/api/whatsapp/disconnect'), { method: 'POST' });
       setStatus((prev) => ({
         ...prev,
         status: 'disconnected',
@@ -284,7 +296,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
     const next = !status.autoReply;
     setStatus((prev) => ({ ...prev, autoReply: next }));
     try {
-      await fetch('/api/whatsapp/settings', {
+      await fetch(getApiUrl('/api/whatsapp/settings'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ autoReply: next }),
@@ -378,7 +390,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
     if (!simText.trim()) return;
     setIsSimulating(true);
     try {
-      const res = await fetch('/api/whatsapp/test-message', {
+      const res = await fetch(getApiUrl('/api/whatsapp/test-message'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -435,7 +447,20 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
             className={`sync-badge ${status.status === 'connected' ? 'sync-online' : status.status === 'qr_ready' || status.status === 'connecting' ? 'sync-pending' : 'sync-offline'}`}
             style={{ padding: '8px 14px', fontSize: 12 }}
           >
-            {status.status === 'connected' ? (
+            <button
+            className="btn btn-quiet"
+            onClick={() => {
+              setCustomBridgeInput(bridgeUrl);
+              setShowBridgeModal(true);
+            }}
+            title="Configure Cloud Backend Bridge URL (Render / Railway)"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+          >
+            <Server size={14} color={bridgeUrl ? '#38BDF8' : '#94A3B8'} />
+            <span>{bridgeUrl ? 'Cloud Bridge' : 'Local Bridge'}</span>
+          </button>
+
+          {status.status === 'connected' ? (
               <>
                 <Wifi size={14} color="#10B981" />
                 <span>CONNECTED: {status.connectedName} (+{status.connectedNumber})</span>
@@ -846,6 +871,89 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
           </div>
         </div>
       </div>
+      {/* Cloud Bridge Endpoint Modal */}
+      {showBridgeModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 20,
+          }}
+          onClick={() => setShowBridgeModal(false)}
+        >
+          <div
+            className="panel"
+            style={{ maxWidth: 520, width: '100%', padding: 24 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <Server size={22} color="#38BDF8" />
+              <h2 style={{ fontSize: 18, margin: 0 }}>Configure WhatsApp Cloud Bridge</h2>
+            </div>
+            <p style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))', lineHeight: 1.5, marginBottom: 16 }}>
+              Connect your Vercel deployment to a persistent 24/7 backend on <strong>Render</strong> or <strong>Railway</strong> so physical Baileys WebSockets remain active in the cloud.
+            </p>
+
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+              Backend Bridge Base URL:
+            </label>
+            <input
+              type="text"
+              placeholder="https://vendora-bridge.onrender.com (or leave empty for same-host)"
+              value={customBridgeInput}
+              onChange={(e) => setCustomBridgeInput(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: 8,
+                border: '1px solid hsl(var(--border))',
+                background: 'hsl(var(--muted)/.4)',
+                color: 'inherit',
+                fontSize: 13,
+                marginBottom: 14,
+              }}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18 }}>
+              <button
+                className="btn btn-quiet"
+                onClick={() => {
+                  setBridgeUrl('');
+                  localStorage.removeItem('vendora_wa_bridge_url');
+                  setShowBridgeModal(false);
+                  onNotify('Reset bridge to same-host default.');
+                }}
+              >
+                Reset to Default
+              </button>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn btn-quiet" onClick={() => setShowBridgeModal(false)}>
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    const cleaned = customBridgeInput.trim().replace(/\/+$/, '');
+                    setBridgeUrl(cleaned);
+                    localStorage.setItem('vendora_wa_bridge_url', cleaned);
+                    setShowBridgeModal(false);
+                    onNotify(cleaned ? `Saved cloud bridge: ${cleaned}` : 'Using same-host bridge');
+                  }}
+                >
+                  Save & Connect
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

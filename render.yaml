@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: vendora-sovereign-bridge
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: corepack enable pnpm && pnpm install --no-frozen-lockfile && node scripts/build.mjs
+    startCommand: node scripts/serve.mjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
