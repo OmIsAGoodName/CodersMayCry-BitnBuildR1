@@ -25,35 +25,27 @@ export interface ModelOption {
 
 export const AVAILABLE_MODELS: ModelOption[] = [
   {
+    id: 'groq-qwen',
+    provider: 'groq',
+    label: 'Groq Ultra-Fast (14,400 req/day)',
+    modelName: 'qwen/qwen3.8-27b',
+    badge: '⚡ Groq Fast Engine',
+    description: 'Ultra-fast open weights inference (0.3s, 14.4k requests/day)',
+  },
+  {
     id: 'gemini-3.6-flash',
     provider: 'gemini',
-    label: 'Google Gemini 3.6 Flash (Recommended)',
+    label: 'Google Gemini 3.6 Flash',
     modelName: 'gemini-3.6-flash',
-    badge: '🌟 Gemini 3.6 Flash',
-    description: 'Fastest semantic comprehension for Hinglish & Devanagari',
-  },
-  {
-    id: 'gpt-4o-mini',
-    provider: 'openai',
-    label: 'OpenAI GPT-4o Mini',
-    modelName: 'gpt-4o-mini',
-    badge: '🤖 GPT-4o Mini',
-    description: 'OpenAI compact model',
-  },
-  {
-    id: 'llama-3.3-70b',
-    provider: 'groq',
-    label: 'Groq Llama 3.3 70B Versatile',
-    modelName: 'qwen/qwen3.8-27b',
-    badge: '⚡ Groq Llama 3.3',
-    description: 'Ultra-fast open weights inference',
+    badge: '⚡ Gemini 3.6 Flash',
+    description: 'High semantic comprehension for Indian colloquialisms',
   },
   {
     id: 'offline-engine',
     provider: 'offline',
     label: 'Local Deterministic Engine (100% Offline)',
     modelName: 'offline-nlp',
-    badge: '⚡ Local Rule Engine',
+    badge: '🛡️ Local Rule Engine',
     description: '0ms on-device regex & Indian colloquial lexicon',
   },
 ];
@@ -137,7 +129,7 @@ export function saveProviderKey(provider: LLMProvider, key: string): void {
 
 export function getActiveModelId(): string {
   if (typeof window === 'undefined') return 'offline-engine';
-  return localStorage.getItem('vendora_active_model') || 'gemini-3.6-flash';
+  return localStorage.getItem('vendora_active_model') || 'groq-qwen';
 }
 
 export function setActiveModelId(modelId: string): void {

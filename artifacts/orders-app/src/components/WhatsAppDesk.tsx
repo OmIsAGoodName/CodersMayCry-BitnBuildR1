@@ -620,31 +620,48 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
             INTAKE CONTROLS:
           </span>
 
-          {/* Toggle 1: AI Engine vs Sovereign Local Engine */}
-          <button
-            type="button"
-            id="toggle-ai-engine-btn"
-            onClick={handleToggleEngine}
+          {/* Engine Selector: Groq, Gemini, or Offline */}
+          <div
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 7,
-              padding: '6px 14px',
+              gap: 6,
+              padding: '5px 12px',
               borderRadius: 8,
-              background: activeModel === 'gemini-3.6-flash' ? 'rgba(168, 85, 247, 0.18)' : 'rgba(16, 185, 129, 0.15)',
-              color: activeModel === 'gemini-3.6-flash' ? '#C084FC' : '#10B981',
-              border: activeModel === 'gemini-3.6-flash' ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid rgba(16, 185, 129, 0.4)',
+              background: activeModel === 'offline-engine' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(168, 85, 247, 0.18)',
+              border: activeModel === 'offline-engine' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(168, 85, 247, 0.45)',
+              color: activeModel === 'offline-engine' ? '#10B981' : '#C084FC',
               fontSize: 12,
               fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
             }}
-            title="Click to switch between Online AI (Gemini 3.6 Flash) and Sovereign Local Engine"
+            title="Select AI Engine: Groq gives 14,400 free requests/day with 0.3s speed; Gemini gives rich reasoning; Offline engine runs 100% locally"
           >
-            {activeModel === 'gemini-3.6-flash' ? <Sparkles size={14} color="#C084FC" /> : <ShieldCheck size={14} color="#10B981" />}
-            <span>Engine: {activeModel === 'gemini-3.6-flash' ? 'Online AI (Gemini 3.6 Flash)' : 'Sovereign Local Engine (Offline)'}</span>
-            <span style={{ fontSize: 10, opacity: 0.7, marginLeft: 2 }}>(Click to switch)</span>
-          </button>
+            {activeModel === 'offline-engine' ? <ShieldCheck size={14} color="#10B981" /> : <Sparkles size={14} color="#C084FC" />}
+            <span>Engine:</span>
+            <select
+              id="select-ai-engine"
+              value={activeModel}
+              onChange={(e) => {
+                const val = e.target.value;
+                setActiveModel(val);
+                setActiveModelId(val);
+                onNotify(`Switched to ${val === 'groq-qwen' ? 'Groq Fast Engine (14,400 req/day)' : val === 'gemini-3.6-flash' ? 'Google Gemini 3.6 Flash' : 'Sovereign Local Engine'}`);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'inherit',
+                fontWeight: 700,
+                fontSize: 12,
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              <option value="groq-qwen" style={{ background: '#0F172A', color: '#C084FC' }}>⚡ Groq Ultra-Fast (14,400 req/day)</option>
+              <option value="gemini-3.6-flash" style={{ background: '#0F172A', color: '#60A5FA' }}>⚡ Google Gemini 3.6 Flash</option>
+              <option value="offline-engine" style={{ background: '#0F172A', color: '#10B981' }}>🛡️ Sovereign Local Engine (Offline)</option>
+            </select>
+          </div>
 
           {/* Toggle 2: Privacy Keyword Gate */}
           <button
