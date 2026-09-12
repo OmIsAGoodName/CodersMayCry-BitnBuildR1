@@ -78,7 +78,7 @@ function decodeSecretKey(encoded: string): string {
   return '';
 }
 
-const FALLBACK_GEMINI_KEY = decodeSecretKey('QVEuQWI4Uk42SnEwSVdzVG9FSDBKdHV5cnNrZnFHZXNzU0pRZ1dGeGVaNlZhMlZUSEZOdmc=');
+const FALLBACK_GEMINI_KEY = decodeSecretKey('QVEuQWI4Uk42TFVzdlRmcm01dW0tQzlRcUljWVZ0cnFmSjNJbWJLWjZ4azVwVTlfU25qNFE=');
 const SYSTEM_MANAGED_GEMINI_KEY = (import.meta.env.VITE_GEMINI_API_KEY as string) || (import.meta.env.VITE_AI_API_KEY as string) || FALLBACK_GEMINI_KEY;
 
 // Provider Keys Management (Secure & Protected)
@@ -136,7 +136,7 @@ export function saveProviderKey(provider: LLMProvider, key: string): void {
 
 export function getActiveModelId(): string {
   if (typeof window === 'undefined') return 'offline-engine';
-  return localStorage.getItem('vendora_active_model') || 'offline-engine';
+  return localStorage.getItem('vendora_active_model') || 'gemini-3.6-flash';
 }
 
 export function setActiveModelId(modelId: string): void {

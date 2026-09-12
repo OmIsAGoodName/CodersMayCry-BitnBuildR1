@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Order } from '@/lib/storage/offlineDb';
 import { parseUniversalMessage } from '@/lib/parser/universalParser';
+import { parseOrderHybrid } from '@/lib/parser/hybridParser';
 
 interface WhatsAppStatus {
   status: 'disconnected' | 'connecting' | 'qr_ready' | 'connected';
@@ -343,7 +344,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
     } catch {}
   };
 
-  const runClientSideSimulation = (text: string, phone: string, name: string) => {
+  const runClientSideSimulation = async (text: string, phone: string, name: string) => {
     const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
     const totalLines = lines.length || 1;
     let currentIdx = 0;
@@ -363,12 +364,24 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
         });
       } else {
         clearInterval(interval);
-        setTimeout(() => {
+        setTimeout(async () => {
           setActiveActivity(null);
           playWhatsAppChime();
 
           const rawMerged = accumulated.join('\n');
-          const parsedRes = parseUniversalMessage(rawMerged);
+          let parsedRes: any = null;
+          let parserBadge = 'Sovereign Local Engine';
+
+          try {
+            const hybridRes = await parseOrderHybrid(rawMerged);
+            parsedRes = hybridRes;
+            parserBadge = hybridRes._source === 'online_ai'
+              ? (hybridRes._modelUsed ? `Online AI (${hybridRes._modelUsed})` : 'Online AI (Gemini 3.6 Flash)')
+              : 'Sovereign Local Engine';
+          } catch {
+            parsedRes = parseUniversalMessage(rawMerged);
+            parserBadge = 'Sovereign Local Engine';
+          }
 
           const newOrder: ParsedWhatsAppOrder = {
             messageId: 'sim_' + Date.now(),
@@ -382,7 +395,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
             parsed: {
               customer: parsedRes.customer || name,
               phone,
-              items: parsedRes.items.map((item) => ({
+              items: (parsedRes.items || []).map((item: any) => ({
                 description: item.description,
                 quantity: item.quantity,
                 attributes: item.attributes,
@@ -392,12 +405,12 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
               amount: parsedRes.amount,
               paidAmount: 0,
               status: 'new',
-              referencesPriorOrder: parsedRes.references_prior_order,
+              referencesPriorOrder: parsedRes.references_prior_order || parsedRes.referencesPriorOrder || false,
               confidence: parsedRes.confidence,
-              needsClarification: parsedRes.needs_clarification,
+              needsClarification: parsedRes.needs_clarification || parsedRes.needsClarification || false,
             },
             autoIngested: autoIngest && parsedRes.confidence >= (status.autoIngestThreshold || 0.80) && !parsedRes.needs_clarification,
-            parserUsed: 'Sovereign Local Engine',
+            parserUsed: parserBadge,
           };
 
           setMessages((prev) => [newOrder, ...prev.filter((m) => m.messageId !== newOrder.messageId)]);
