@@ -1357,9 +1357,6 @@ function InboxPage({
               >
                 {isListening ? <MicOff size={16} /> : <Mic size={16} />}
               </button>
-              <button className="icon-btn" onClick={() => { setMessage(''); setLiveTranscript(''); setVoiceStatus(''); }} aria-label="Clear" data-testid="button-clear-msg">
-                <X />
-              </button>
             </div>
           </div>
 
