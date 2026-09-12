@@ -33,7 +33,7 @@ import { parseUniversalMessage } from '@/lib/parser/universalParser';
 import { QueryDesk } from '@/components/QueryDesk';
 import { transcribeAudio, getSupportedAudioMimeType, setupAudioAnalyser, isOperaOrNonChrome } from '@/lib/speech/audioTranscriber';
 
-import { DayTracker, applyDayTheme } from '@/components/DayTracker';
+import { applyDayTheme } from '@/components/DayTracker';
 import { BrandLogo } from '@/components/BrandLogo';
 import { AuthScreen } from '@/components/AuthScreen';
 
@@ -640,7 +640,6 @@ function Dashboard({
         }
       />
 
-      <DayTracker todayLoadCount={due + overdue} outstandingAmount={money(outstanding)} />
 
       <div className="stats-grid">
         <div className="stat-card featured">
@@ -1725,6 +1724,9 @@ function App() {
 
   // Initialize Sovereign Offline Database & Online Reconnection Listeners
   useEffect(() => {
+    // Automatically apply dynamic theme based on today's real day of the week
+    applyDayTheme(new Date().getDay());
+
     OfflineStorage.init().then((data) => {
       setOrders(data.orders);
       setSettings(data.settings);
