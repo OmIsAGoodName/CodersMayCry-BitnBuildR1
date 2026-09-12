@@ -9,7 +9,7 @@ import { Users as UsersIcon } from 'lucide-react';
 import { type ReactNode, useEffect, useState, useRef, useTransition } from 'react';
 import { Link, Route, Switch, useLocation } from 'wouter';
 import {
-  Sun, Moon, AlertTriangle, ArrowRight, BarChart3, CalendarDays, Check, CheckCircle2, ClipboardList,
+  Printer, FileDown, Sun, Moon, AlertTriangle, ArrowRight, BarChart3, CalendarDays, Check, CheckCircle2, ClipboardList,
   CloudOff, Database, Download, FileJson, Filter, Home, Inbox, IndianRupee, MessageSquare,
   Layers3, MoreHorizontal, Plus, RefreshCw, RotateCcw, Search, Mic, MicOff, Settings as SettingsIcon,
   Sparkles, Trash2, Upload, Wifi, WifiOff, X, Zap, Cpu, Play, Key, SlidersHorizontal, Copy, User,
@@ -35,6 +35,7 @@ import { transcribeAudio, getSupportedAudioMimeType, setupAudioAnalyser, isOpera
 
 import { applyDayTheme } from '@/components/DayTracker';
 import { BrandLogo } from '@/components/BrandLogo';
+import { PrintableLedgerModal } from '@/components/PrintableLedgerModal';
 import { AuthScreen } from '@/components/AuthScreen';
 import { WhatsAppDesk } from '@/components/WhatsAppDesk';
 
@@ -619,7 +620,8 @@ function Dashboard({
   onNew: () => void;
   onEdit: (order: Order) => void;
 }) {
-  const { currentMember } = useOrgAuth();
+  const { currentMember, organization } = useOrgAuth();
+  const [showPrintLedger, setShowPrintLedger] = useState(false);
   const active = orders.filter((o) => !['completed', 'cancelled'].includes(o.status));
   const due = active.filter((o) => o.dueDate === dateOnly()).length;
   const overdue = active.filter((o) => o.dueDate < dateOnly()).length;
@@ -636,9 +638,20 @@ function Dashboard({
         title={`Welcome, ${currentMember ? currentMember.name : settings.operatorName}.`}
         subtitle="Your sovereign offline workbench is fast, resilient, and always in sync."
         action={
-          <button className="btn btn-primary" onClick={onNew} data-testid="button-new-order">
-            <Plus /> New Order
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowPrintLedger(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontWeight: 600 }}
+              title="Generate clean printable statement of accounts & export to PDF"
+              data-testid="button-print-ledger"
+            >
+              <Printer size={16} /> Print Ledger (PDF)
+            </button>
+            <button className="btn btn-primary" onClick={onNew} data-testid="button-new-order">
+              <Plus /> New Order
+            </button>
+          </div>
         }
       />
 
@@ -675,9 +688,20 @@ function Dashboard({
               <h2>Recent Orders</h2>
               <span className="minor">Real-time local ledger</span>
             </div>
-            <Link href="/orders" className="btn btn-quiet" data-testid="link-see-all-orders">
-              View All <ArrowRight />
-            </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                className="btn btn-quiet"
+                onClick={() => setShowPrintLedger(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13 }}
+                title="Export Printable Ledger Statement"
+                data-testid="button-export-ledger-pdf"
+              >
+                <FileDown size={14} /> Export PDF
+              </button>
+              <Link href="/orders" className="btn btn-quiet" data-testid="link-see-all-orders">
+                View All <ArrowRight />
+              </Link>
+            </div>
           </div>
           <div className="order-list">
             {recent.length ? (
@@ -750,6 +774,15 @@ function Dashboard({
           </section>
         </div>
       </div>
+
+      <PrintableLedgerModal
+        isOpen={showPrintLedger}
+        onClose={() => setShowPrintLedger(false)}
+        orders={orders}
+        settings={settings}
+        organization={organization}
+        operatorName={currentMember?.name || settings.operatorName}
+      />
     </div>
   );
 }
