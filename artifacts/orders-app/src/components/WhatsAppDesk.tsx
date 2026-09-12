@@ -256,7 +256,25 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
       })
       .catch(() => {});
 
+    // Auto-poll status every 3s to guarantee fresh QR code in cloud environments
+    const pollInterval = setInterval(() => {
+      fetch(getApiUrl('/api/whatsapp/status'))
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.status) {
+            setStatus((prev) => {
+              if (prev.qrRaw !== data.qrRaw || prev.status !== data.status) {
+                return { ...prev, ...data };
+              }
+              return prev;
+            });
+          }
+        })
+        .catch(() => {});
+    }, 3000);
+
     return () => {
+      clearInterval(pollInterval);
       clearTimeout(activityTimerRef.current);
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
@@ -729,23 +747,41 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
                 </div>
               ) : status.status === 'qr_ready' && status.qrDataUrl ? (
                 <div>
-                  <p style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))', marginTop: 0 }}>
-                    Open WhatsApp on your phone &rarr; Settings &rarr; Linked Devices &rarr; Scan QR:
+                  <p style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))', marginTop: 0 }}>
+                    Open WhatsApp &rarr; <strong>Settings</strong> &rarr; <strong>Linked Devices</strong> &rarr; <strong>Link a Device</strong>:
                   </p>
-                  <img
-                    src={status.qrDataUrl}
-                    alt="WhatsApp QR Code"
+                  <div
                     style={{
-                      width: 220,
-                      height: 220,
+                      background: '#FFFFFF',
+                      padding: 16,
+                      borderRadius: 16,
+                      display: 'inline-block',
                       margin: '10px auto',
-                      borderRadius: 12,
-                      border: '4px solid #fff',
-                      display: 'block',
+                      boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
                     }}
-                  />
-                  <small style={{ display: 'block', color: 'hsl(var(--muted-foreground))', marginTop: 8 }}>
-                    QR auto-refreshes periodically via Baileys multi-device socket.
+                  >
+                    <img
+                      src={status.qrDataUrl}
+                      alt="WhatsApp QR Code"
+                      style={{
+                        width: 256,
+                        height: 256,
+                        display: 'block',
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 8 }}>
+                    <button
+                      className="btn btn-quiet"
+                      onClick={handleConnect}
+                      style={{ fontSize: 12 }}
+                      title="Request fresh QR code"
+                    >
+                      <RefreshCw size={12} className={connecting ? "spin" : ""} /> Refresh QR Code
+                    </button>
+                  </div>
+                  <small style={{ display: 'block', color: 'hsl(var(--muted-foreground))', marginTop: 8, fontSize: 11 }}>
+                    Active & auto-refreshing • Standard WhatsApp Web multi-device pairing
                   </small>
                 </div>
               ) : (

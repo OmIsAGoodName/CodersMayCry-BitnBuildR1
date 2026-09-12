@@ -8,6 +8,7 @@ import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
+  Browsers,
 } from '@whiskeysockets/baileys';
 
 // --- Indian Colloquial & Hindi Parsing Helpers ---
@@ -234,7 +235,7 @@ export class WhatsAppBridgeService extends EventEmitter {
         auth: state,
         logger,
         printQRInTerminal: false,
-        browser: ['Vendora Sovereign', 'Desktop', '1.0.0'],
+        browser: Browsers.ubuntu('Chrome'),
         syncFullHistory: false,
         generateHighQualityLinkPreview: false,
       });
@@ -248,7 +249,7 @@ export class WhatsAppBridgeService extends EventEmitter {
           this.qrCodeRaw = qr;
           this.status = 'qr_ready';
           try {
-            this.qrCodeDataUrl = await QRCode.toDataURL(qr, { margin: 2, scale: 6 });
+            this.qrCodeDataUrl = await QRCode.toDataURL(qr, { margin: 4, scale: 8, color: { dark: '#000000', light: '#ffffff' } });
           } catch (err) {
             console.error('QR Data URL error:', err);
           }
@@ -508,8 +509,9 @@ export async function handleWhatsAppHttpRequest(req, res, next) {
   if (pathname === '/api/whatsapp/stream' && method === 'GET') {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
       'Access-Control-Allow-Origin': '*',
     });
 
