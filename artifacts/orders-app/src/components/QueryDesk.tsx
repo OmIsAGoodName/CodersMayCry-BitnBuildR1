@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { Order, Settings } from '@/lib/storage/offlineDb';
 import { getSavedProviderKeys } from '@/lib/parser/hybridParser';
+import { transcribeAudio, getSupportedAudioMimeType, setupAudioAnalyser } from '@/lib/speech/audioTranscriber';
 
 interface QueryDeskProps {
   orders: Order[];
@@ -79,6 +80,7 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
 
   const streamRef = useRef<MediaStream | null>(null);
+  const cleanupAudioAnalyserRef = useRef<(() => void) | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
   const recognitionRef = useRef<any>(null);
@@ -207,46 +209,53 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
 
   // Stop Recording / Listening
   const stopVoice = async () => {
-    setIsListening(false);
-    setSpeechState('idle');
+    if (cleanupAudioAnalyserRef.current) {
+      cleanupAudioAnalyserRef.current();
+      cleanupAudioAnalyserRef.current = null;
+    }
 
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch {}
       recognitionRef.current = null;
     }
 
-    // Process audio if fallback MediaRecorder was used
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      const recorder = mediaRecorderRef.current;
       const audioBlobPromise = new Promise<Blob>((resolve) => {
-        recorder.onstop = () => {
-          resolve(new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' }));
+        if (!mediaRecorderRef.current) return resolve(new Blob());
+        mediaRecorderRef.current.onstop = () => {
+          const mime = audioChunksRef.current[0]?.type || getSupportedAudioMimeType() || 'audio/webm';
+          resolve(new Blob(audioChunksRef.current, { type: mime }));
         };
       });
-      try { recorder.stop(); } catch {}
+
+      try { mediaRecorderRef.current.stop(); } catch {}
 
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
 
-      setVoiceStatus('Transcribing audio with Google Gemini...');
+      setVoiceStatus('Transcribing voice with AI (Gemini 3.6 Flash)...');
       const audioBlob = await audioBlobPromise;
-      const geminiKey = getSavedProviderKeys().gemini;
-      if (geminiKey && audioBlob.size > 800) {
+      if (audioBlob.size > 200) {
         try {
-          const transcribed = await transcribeAudioWithGemini(audioBlob, geminiKey);
+          const transcribed = await transcribeAudio(audioBlob);
           if (transcribed) {
             setQuery(transcribed);
             setLiveTranscript(transcribed);
             setVoiceStatus(`Transcribed: "${transcribed}"`);
+            setIsListening(false);
+            setSpeechState('idle');
             return;
           }
         } catch (gemErr) {
-          console.warn('Gemini audio transcription failed:', gemErr);
+          console.warn('Audio transcription failed:', gemErr);
         }
       }
     }
+
+    setIsListening(false);
+    setSpeechState('idle');
 
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
@@ -260,7 +269,7 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
     }
   };
 
-  // Start Live Speech Recognition (Google Keyboard / Gboard live streaming style)
+  // Start Live Speech Recognition (Google Keyboard style on Chromium, MediaRecorder + Web Audio on Firefox/Safari)
   const toggleVoice = async () => {
     if (typeof window === 'undefined') return;
 
@@ -281,9 +290,9 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
 
         const recognition = new SpeechRecognition();
         recognitionRef.current = recognition;
-        recognition.lang = 'en-IN'; // Google's Indian bilingual speech model for English & Hinglish
+        recognition.lang = 'en-IN';
         recognition.continuous = true;
-        recognition.interimResults = true; // Enables instant live typing while speaking
+        recognition.interimResults = true;
         recognition.maxAlternatives = 1;
 
         setIsListening(true);
@@ -291,23 +300,13 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
         setSpeechState('listening');
         setVoiceStatus('🎙️ Listening... Speak now (say "whats due today" or "kiska paisa baki hai")');
 
-        recognition.onaudiostart = () => {
-          setSpeechState('listening');
-        };
+        recognition.onaudiostart = () => { setSpeechState('listening'); };
+        recognition.onsoundstart = () => { setSpeechState('sound_detected'); };
+        recognition.onspeechstart = () => { setSpeechState('speech_detected'); };
 
-        recognition.onsoundstart = () => {
-          setSpeechState('sound_detected');
-        };
-
-        recognition.onspeechstart = () => {
-          setSpeechState('speech_detected');
-        };
-
-        // Stream words live as you speak (Google Keyboard style)
         recognition.onresult = (event: any) => {
           let interim = '';
           let final = '';
-
           for (let i = 0; i < event.results.length; ++i) {
             const transcript = event.results[i][0]?.transcript || '';
             if (event.results[i].isFinal) {
@@ -316,7 +315,6 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
               interim += (interim ? ' ' : '') + transcript;
             }
           }
-
           const liveWords = final ? (interim ? `${final} ${interim}` : final) : interim;
           if (liveWords) {
             setQuery(liveWords);
@@ -343,28 +341,35 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
         recognition.start();
         return;
       } catch (recErr) {
-        console.warn('SpeechRecognition start failed, trying MediaRecorder fallback:', recErr);
+        console.warn('SpeechRecognition start failed, falling back to MediaRecorder:', recErr);
       }
     }
 
-    // FALLBACK PATH: For browsers without SpeechRecognition (Firefox / Safari restrictions)
+    // UNIVERSAL FALLBACK: For non-Chromium browsers (Firefox, Safari, iOS)
     try {
       setIsListening(true);
       setLiveTranscript('');
-      setVoiceStatus('Recording audio query via microphone...');
+      setSpeechState('listening');
+      setVoiceStatus('🎙️ Non-Chromium Mic active. Speak now, tap "Done ✓" when finished...');
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       audioChunksRef.current = [];
 
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+      // Web Audio API volume feedback
+      if (cleanupAudioAnalyserRef.current) cleanupAudioAnalyserRef.current();
+      cleanupAudioAnalyserRef.current = setupAudioAnalyser(stream, (hasSound) => {
+        setSpeechState(hasSound ? 'speech_detected' : 'sound_detected');
+      });
+
+      const mimeType = getSupportedAudioMimeType();
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
       };
-      recorder.start(250);
+      recorder.start(100);
     } catch (err: any) {
       setIsListening(false);
       setVoiceStatus('⚠️ Could not access microphone. Please check browser microphone permissions.');

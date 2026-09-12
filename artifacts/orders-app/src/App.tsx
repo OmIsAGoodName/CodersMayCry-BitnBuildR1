@@ -28,7 +28,8 @@ import {
   hasCustomApiKey, resetToManagedApiKey
 } from '@/lib/parser/hybridParser';
 import { parseUniversalMessage } from '@/lib/parser/universalParser';
-import { QueryDesk, transcribeAudioWithGemini } from '@/components/QueryDesk';
+import { QueryDesk } from '@/components/QueryDesk';
+import { transcribeAudio, getSupportedAudioMimeType, setupAudioAnalyser } from '@/lib/speech/audioTranscriber';
 import { StructuredJsonPage } from '@/pages/StructuredJsonPage';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { DayTracker, applyDayTheme } from '@/components/DayTracker';
@@ -896,8 +897,14 @@ function InboxPage({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const cleanupAudioAnalyserRef = useRef<(() => void) | null>(null);
 
   const stopVoice = async () => {
+    if (cleanupAudioAnalyserRef.current) {
+      cleanupAudioAnalyserRef.current();
+      cleanupAudioAnalyserRef.current = null;
+    }
+
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch {}
       recognitionRef.current = null;
@@ -907,23 +914,30 @@ function InboxPage({
       const audioBlobPromise = new Promise<Blob>((resolve) => {
         if (!mediaRecorderRef.current) return resolve(new Blob());
         mediaRecorderRef.current.onstop = () => {
-          const blob = new Blob(audioChunksRef.current, { type: audioChunksRef.current[0]?.type || 'audio/webm' });
-          resolve(blob);
+          const mime = audioChunksRef.current[0]?.type || getSupportedAudioMimeType() || 'audio/webm';
+          resolve(new Blob(audioChunksRef.current, { type: mime }));
         };
       });
 
-      mediaRecorderRef.current.stop();
-      setVoiceStatus('Transcribing voice message with AI...');
+      try { mediaRecorderRef.current.stop(); } catch {}
+
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+
+      setVoiceStatus('Transcribing customer voice message with AI (Gemini 3.6 Flash)...');
       const audioBlob = await audioBlobPromise;
-      const geminiKey = getSavedProviderKeys().gemini;
-      if (geminiKey && audioBlob.size > 800) {
+      if (audioBlob.size > 200) {
         try {
-          const transcribed = await transcribeAudioWithGemini(audioBlob, geminiKey);
+          const transcribed = await transcribeAudio(audioBlob);
           if (transcribed) {
             setMessage(transcribed);
             setLiveTranscript(transcribed);
-            setVoiceStatus('Transcribed: "' + transcribed + '"');
+            setVoiceStatus(`Transcribed: "${transcribed}"`);
             onNotify('Voice message transcribed');
+            setIsListening(false);
+            setSpeechState('idle');
             return;
           }
         } catch (gemErr) {
@@ -941,7 +955,7 @@ function InboxPage({
     }
 
     if (liveTranscript) {
-      setVoiceStatus('Transcribed: "' + liveTranscript + '"');
+      setVoiceStatus(`Transcribed: "${liveTranscript}"`);
       onNotify('Voice message captured');
     } else {
       setVoiceStatus('Voice intake complete.');
@@ -992,7 +1006,7 @@ function InboxPage({
               interim += (interim ? ' ' : '') + transcript;
             }
           }
-          const liveWords = final ? (interim ? (final + ' ' + interim) : final) : interim;
+          const liveWords = final ? (interim ? `${final} ${interim}` : final) : interim;
           if (liveWords) {
             setMessage(liveWords);
             setLiveTranscript(liveWords);
@@ -1022,20 +1036,30 @@ function InboxPage({
       }
     }
 
+    // UNIVERSAL FALLBACK: Firefox, Safari, iOS
     try {
       setIsListening(true);
       setLiveTranscript('');
-      setVoiceStatus('Recording audio query via microphone...');
+      setSpeechState('listening');
+      setVoiceStatus('🎙️ Non-Chromium Mic active. Speak order now, tap "Done ✓" when finished...');
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       audioChunksRef.current = [];
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+
+      if (cleanupAudioAnalyserRef.current) cleanupAudioAnalyserRef.current();
+      cleanupAudioAnalyserRef.current = setupAudioAnalyser(stream, (hasSound) => {
+        setSpeechState(hasSound ? 'speech_detected' : 'sound_detected');
+      });
+
+      const mimeType = getSupportedAudioMimeType();
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
+
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
       };
-      recorder.start(250);
+      recorder.start(100);
     } catch (err: any) {
       setIsListening(false);
       setVoiceStatus('⚠️ Could not access microphone. Please check browser permissions.');
