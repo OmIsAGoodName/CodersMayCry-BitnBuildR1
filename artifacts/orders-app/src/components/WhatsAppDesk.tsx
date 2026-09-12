@@ -703,11 +703,29 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <strong style={{ fontSize: 14 }}>{msg.parsed.customer}</strong>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              <strong style={{ fontSize: 15 }}>{msg.parsed.customer}</strong>
                               <span style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>{msg.phone}</span>
-                              <span style={{ fontSize: 10, background: 'hsl(var(--secondary)/.2)', color: 'hsl(var(--secondary))', padding: '1px 6px', borderRadius: 6, fontWeight: 700 }}>
+                              <span style={{ fontSize: 10, background: 'hsl(var(--secondary)/.2)', color: 'hsl(var(--secondary))', padding: '2px 7px', borderRadius: 6, fontWeight: 700 }}>
                                 {msg.messageCount} msgs merged
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  padding: '2px 8px',
+                                  borderRadius: 6,
+                                  fontWeight: 700,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  background: (msg.parserUsed || '').includes('Online') ? 'rgba(168, 85, 247, 0.25)' : 'rgba(16, 185, 129, 0.2)',
+                                  color: (msg.parserUsed || '').includes('Online') ? '#C084FC' : '#10B981',
+                                  border: (msg.parserUsed || '').includes('Online') ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid rgba(16, 185, 129, 0.45)',
+                                }}
+                                title="Engine used to parse this WhatsApp order"
+                              >
+                                {(msg.parserUsed || '').includes('Online') ? <Sparkles size={11} /> : <ShieldCheck size={11} />}
+                                {msg.parserUsed || 'Sovereign Local Engine'}
                               </span>
                               {msg.parsed.referencesPriorOrder && (
                                 <span style={{ fontSize: 10, background: 'rgba(59, 130, 246, 0.2)', color: '#38BDF8', padding: '1px 6px', borderRadius: 6 }}>

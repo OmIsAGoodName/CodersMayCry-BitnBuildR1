@@ -360,7 +360,10 @@ export class WhatsAppBridgeService extends EventEmitter {
   }
 
   getRecentMessages() {
-    return this.recentMessages;
+    return this.recentMessages.map((msg) => ({
+      ...msg,
+      parserUsed: msg.parserUsed || 'Sovereign Local Engine',
+    }));
   }
 
   setSettings({ autoReply, autoIngestThreshold, debounceMs }) {
