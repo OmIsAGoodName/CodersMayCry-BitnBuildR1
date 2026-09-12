@@ -77,7 +77,7 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
   const [members, setMembers] = useState<OrgMemberProfile[]>(() => {
     try {
       if (!activeOrgId) return [];
-      const cached = localStorage.getItem(endora_org_members_);
+      const cached = localStorage.getItem('vendora_org_members_' + activeOrgId);
       return cached ? JSON.parse(cached) : [];
     } catch {
       return [];
@@ -87,7 +87,7 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
   const [currentMemberId, setCurrentMemberId] = useState<string>(() => {
     try {
       if (!activeOrgId) return '';
-      return localStorage.getItem(endora_active_member_) || '';
+      return localStorage.getItem('vendora_active_member_' + activeOrgId) || '';
     } catch {
       return '';
     }
@@ -177,13 +177,13 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
 
           setMembers(mapped);
           try {
-            localStorage.setItem(endora_org_members_, JSON.stringify(mapped));
+            localStorage.setItem('vendora_org_members_' + activeOrgId, JSON.stringify(mapped));
           } catch {}
 
           if (!currentMemberId || !mapped.some((m) => m.id === currentMemberId)) {
             setCurrentMemberId(mapped[0].id);
             try {
-              localStorage.setItem(endora_active_member_, mapped[0].id);
+              localStorage.setItem('vendora_active_member_' + activeOrgId, mapped[0].id);
             } catch {}
           }
         }
@@ -243,7 +243,7 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
 
   const createOrganization = async (orgName: string, ownerName: string) => {
     const slug = orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'store';
-    const newOrgId = org_;
+    const newOrgId = 'org_' + Date.now().toString(36);
 
     const newOrg: CloudOrganization = {
       id: newOrgId,
@@ -255,7 +255,7 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
 
     const ownerInitials = ownerName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || 'OW';
     const ownerMember: OrgMemberProfile = {
-      id: mem_,
+      id: 'mem_' + Date.now().toString(36),
       name: ownerName.trim(),
       role: 'owner',
       avatarInitials: ownerInitials,
@@ -269,8 +269,8 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
 
     try {
       localStorage.setItem('vendora_all_orgs', JSON.stringify(updatedOrgs));
-      localStorage.setItem(endora_org_members_, JSON.stringify([ownerMember]));
-      localStorage.setItem(endora_active_member_, ownerMember.id);
+      localStorage.setItem('vendora_org_members_' + newOrgId, JSON.stringify([ownerMember]));
+      localStorage.setItem('vendora_active_member_' + newOrgId, ownerMember.id);
       localStorage.setItem('vendora_active_org_id', newOrgId);
     } catch {}
 
@@ -300,7 +300,7 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
   const switchMember = (memberId: string) => {
     setCurrentMemberId(memberId);
     try {
-      localStorage.setItem(endora_active_member_, memberId);
+      localStorage.setItem('vendora_active_member_' + activeOrgId, memberId);
     } catch {}
   };
 
@@ -313,7 +313,7 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
       .toUpperCase() || 'OP';
 
     const newMember: OrgMemberProfile = {
-      id: mem_,
+      id: 'mem_' + Date.now().toString(36),
       name,
       role,
       email,
@@ -323,7 +323,7 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
     const updated = [...members, newMember];
     setMembers(updated);
     try {
-      localStorage.setItem(endora_org_members_, JSON.stringify(updated));
+      localStorage.setItem('vendora_org_members_' + activeOrgId, JSON.stringify(updated));
     } catch {}
 
     if (isOnline) {

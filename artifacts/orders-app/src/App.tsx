@@ -1605,6 +1605,7 @@ function SettingsPage({
   onOpenOnboarding: () => void;
   onNotify: (msg: string) => void;
 }) {
+  const { currentUser, logout } = useOrgAuth();
   const [form, setForm] = useState(settings);
   const [keys, setKeys] = useState(getSavedProviderKeys());
   const [defaultModel, setDefaultModel] = useState(getActiveModelId());
@@ -1883,7 +1884,7 @@ function SettingsPage({
           </div>
         </section>
 
-        <section className="setting-card" style={{ border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.04)' }}>
+        <section className="settings-card wide" style={{ border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.04)' }}>
           <h3 style={{ color: '#ef4444' }}>Account & Session</h3>
           <p className="setting-desc">Manage your active store credentials and device authentication.</p>
           <div className="setting-row">
@@ -2029,7 +2030,7 @@ function App() {
 
     // Cloud delete from Supabase
     enqueueMutation('delete', orderId);
-    if (navigator.onLine) {
+    if (navigator.onLine && organization?.id) {
       flushPendingMutations(organization.id);
     }
   };
