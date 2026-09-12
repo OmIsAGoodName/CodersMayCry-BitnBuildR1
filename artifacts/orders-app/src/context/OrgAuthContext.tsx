@@ -13,6 +13,7 @@ export interface OrgMemberProfile {
   email?: string;
   avatarInitials: string;
   userId?: string;
+  status?: 'active' | 'pending';
 }
 
 interface OrgAuthContextType {
@@ -30,6 +31,7 @@ interface OrgAuthContextType {
   // Member & Hierarchy
   currentMember: OrgMemberProfile | null;
   members: OrgMemberProfile[];
+  refreshMembers: () => Promise<void>;
   switchMember: (memberId: string) => void;
   addMember: (name: string, role: UserRole, email?: string) => Promise<void>;
 
@@ -156,52 +158,98 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
     loadCloudOrg();
   }, [isOnline, activeOrgId]);
 
-  // Load organization members
-  useEffect(() => {
-    if (!activeOrgId) return;
+  // Refresh organization members from cloud (combines organization_members and app_users)
+  const refreshMembers = async () => {
+    if (!activeOrgId || !isOnline) return;
+    try {
+      // 1. Pull from organization_members
+      const { data, error } = await supabase
+        .from('organization_members')
+        .select('*')
+        .eq('org_id', activeOrgId);
 
-    async function loadOrgMembers() {
-      try {
-        const { data, error } = await supabase
-          .from('organization_members')
-          .select('*')
-          .eq('org_id', activeOrgId);
+      // 2. Pull from app_users
+      const { data: usersData } = await supabase
+        .from('app_users')
+        .select('*')
+        .eq('org_id', activeOrgId);
 
-        if (!error && data && data.length > 0) {
-          const mapped: OrgMemberProfile[] = data.map((m: any) => ({
+      const memberMap = new Map<string, OrgMemberProfile>();
+
+      if (!error && data) {
+        for (const m of data) {
+          const isInvite = Boolean(m.email && m.email.startsWith('invite:'));
+          memberMap.set(m.id, {
             id: m.id,
             name: m.member_name,
             role: m.role as UserRole,
             email: m.email,
-            avatarInitials: m.avatar_initials || m.member_name.slice(0, 2).toUpperCase(),
-          }));
+            avatarInitials: m.avatar_initials || (m.member_name ? m.member_name.slice(0, 2).toUpperCase() : 'EM'),
+            status: isInvite ? 'pending' : 'active',
+          });
+        }
+      }
 
-          setMembers(mapped);
-          try {
-            localStorage.setItem('vendora_org_members_' + activeOrgId, JSON.stringify(mapped));
-          } catch {}
+      // Also merge any users registered under this org_id
+      if (usersData) {
+        for (const u of usersData) {
+          const existing = Array.from(memberMap.values()).find(
+            (m) =>
+              m.id === u.id ||
+              m.email?.toLowerCase() === `${u.username}@vendora.store`.toLowerCase() ||
+              m.name.toLowerCase() === u.full_name.toLowerCase()
+          );
 
-          if (currentUser) {
-            const matching = mapped.find((m) =>
+          if (!existing) {
+            const initials =
+              u.full_name
+                .split(' ')
+                .map((w: string) => w[0])
+                .join('')
+                .slice(0, 2)
+                .toUpperCase() || 'EM';
+            memberMap.set(u.id, {
+              id: u.id,
+              name: u.full_name,
+              role: u.role as UserRole,
+              email: `${u.username}@vendora.store`,
+              avatarInitials: initials,
+              status: 'active',
+            });
+          }
+        }
+      }
+
+      const mapped = Array.from(memberMap.values());
+      if (mapped.length > 0) {
+        setMembers(mapped);
+        try {
+          localStorage.setItem('vendora_org_members_' + activeOrgId, JSON.stringify(mapped));
+        } catch {}
+
+        if (currentUser) {
+          const matching = mapped.find(
+            (m) =>
               m.email?.toLowerCase().startsWith(currentUser.username.toLowerCase() + '@') ||
               m.name.toLowerCase() === currentUser.fullName.toLowerCase() ||
               m.id === currentUser.id
-            );
-            if (matching) {
-              setCurrentMemberId(matching.id);
-              try {
-                localStorage.setItem('vendora_active_member_' + activeOrgId, matching.id);
-              } catch {}
-            }
+          );
+          if (matching) {
+            setCurrentMemberId(matching.id);
+            try {
+              localStorage.setItem('vendora_active_member_' + activeOrgId, matching.id);
+            } catch {}
           }
         }
-      } catch (err) {
-        console.warn('Could not pull members:', err);
       }
+    } catch (err) {
+      console.warn('Could not pull members:', err);
     }
+  };
 
-    if (isOnline) {
-      loadOrgMembers();
+  useEffect(() => {
+    if (isOnline && activeOrgId) {
+      refreshMembers();
     }
   }, [isOnline, activeOrgId]);
 
@@ -370,6 +418,7 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
         createOrganization,
         currentMember,
         members,
+        refreshMembers,
         switchMember,
         addMember,
         user,

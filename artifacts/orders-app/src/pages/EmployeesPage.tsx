@@ -17,7 +17,7 @@ let sessionInviteUsername = '';
 let sessionInviteRole: 'operator' | 'manager' = 'operator';
 
 export function EmployeesPage() {
-  const { organization, members, currentMember, canManageSettings, currentUser } = useOrgAuth();
+  const { organization, members, currentMember, canManageSettings, currentUser, refreshMembers } = useOrgAuth();
 
   // Invite Form State (Persisted in session across tab switches, resets on page refresh)
   const [inviteUsername, setInviteUsernameState] = useState(sessionInviteUsername);
@@ -59,6 +59,7 @@ export function EmployeesPage() {
   };
 
   useEffect(() => {
+    refreshMembers();
     loadPendingInvites();
   }, [organization?.id, isOwner]);
 
@@ -116,6 +117,7 @@ export function EmployeesPage() {
         });
         setInviteUsername('');
         setUserLookupStatus(null);
+        refreshMembers();
         loadPendingInvites();
       } else {
         setFeedback({ type: 'error', message: res.error || 'Failed to issue invitation' });
@@ -141,7 +143,13 @@ export function EmployeesPage() {
     }
   };
 
-  const activeMembers = members.filter(m => m.status === 'active');
+  const activeMembers = useMemo(() => {
+    return members.filter((m) => {
+      if (m.email?.startsWith('invite:')) return false;
+      if (m.status === 'pending') return false;
+      return true;
+    });
+  }, [members]);
 
   const getRoleBadge = (role: UserRole) => {
     switch (role) {
@@ -282,7 +290,22 @@ export function EmployeesPage() {
               <h2>Active Team Roster</h2>
               <span className="minor">{activeMembers.length} active persons working in this store</span>
             </div>
-            <Users size={16} style={{ color: 'var(--day-accent)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  refreshMembers();
+                  loadPendingInvites();
+                }}
+                className="btn btn-quiet"
+                style={{ fontSize: 12, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                title="Sync roster from Cloud"
+              >
+                <RefreshCw size={13} style={{ animation: loadingInvites ? 'spin 1s linear infinite' : 'none' }} />
+                <span>Sync Roster</span>
+              </button>
+              <Users size={16} style={{ color: 'var(--day-accent)' }} />
+            </div>
           </div>
 
           <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
