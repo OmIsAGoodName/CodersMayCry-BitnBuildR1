@@ -756,13 +756,19 @@ function OrdersPage({
   orders,
   onNew,
   onEdit,
+  query,
+  setQuery,
+  filter,
+  setFilter,
 }: {
   orders: Order[];
   onNew: () => void;
   onEdit: (order: Order) => void;
+  query: string;
+  setQuery: (q: string) => void;
+  filter: 'all' | OrderStatus;
+  setFilter: (f: 'all' | OrderStatus) => void;
 }) {
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | OrderStatus>('all');
 
   const filtered = orders.filter(
     (o) =>
@@ -886,14 +892,23 @@ function OrdersPage({
 function InboxPage({
   onSave,
   onNotify,
+  message,
+  setMessage,
+  parsed,
+  setParsed,
+  forceOffline,
+  setForceOffline,
 }: {
   onSave: (data: Partial<Order>) => void;
   onNotify: (message: string) => void;
+  message: string;
+  setMessage: (m: string) => void;
+  parsed: HybridParseResult | null;
+  setParsed: (p: HybridParseResult | null) => void;
+  forceOffline: boolean;
+  setForceOffline: (f: boolean) => void;
 }) {
-  const [message, setMessage] = useState('');
-  const [parsed, setParsed] = useState<HybridParseResult | null>(null);
   const [busy, setBusy] = useState(false);
-  const [forceOffline, setForceOffline] = useState(false);
 
   // Model & Provider Selection State
   const [selectedModelId, setSelectedModelId] = useState<string>(getActiveModelId());
@@ -1521,6 +1536,8 @@ function InboxPage({
 function SettingsPage({
   settings,
   online,
+  formDraft,
+  onFormDraftChange,
   onSave,
   onExport,
   onImport,
@@ -1529,6 +1546,8 @@ function SettingsPage({
 }: {
   settings: Settings;
   online: boolean;
+  formDraft: Settings | null;
+  onFormDraftChange: (s: Settings | null) => void;
   onSave: (settings: Settings) => void;
   onExport: () => void;
   onImport: (file: File) => void;
@@ -1536,13 +1555,19 @@ function SettingsPage({
   onNotify: (msg: string) => void;
 }) {
   const { currentUser, logout } = useOrgAuth();
-  const [form, setForm] = useState(settings);
+  const [form, setForm] = useState(formDraft || settings);
 
   useEffect(() => {
-    setForm(settings);
-  }, [settings]);
+    if (!formDraft) setForm(settings);
+  }, [settings, formDraft]);
 
-  const set = (key: keyof Settings, value: unknown) => setForm((prev) => ({ ...prev, [key]: value }));
+  const set = (key: keyof Settings, value: unknown) => {
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      onFormDraftChange(next);
+      return next;
+    });
+  };
 
   return (
     <div className="page">
@@ -1721,6 +1746,19 @@ function App() {
   const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [toast, setToast] = useState('');
   const [editing, setEditing] = useState<Order | null | undefined>(undefined);
+
+  // Tab-persistent session state (reverts to default on full page refresh)
+  const [inboxMessage, setInboxMessage] = useState('');
+  const [inboxParsed, setInboxParsed] = useState<HybridParseResult | null>(null);
+  const [inboxForceOffline, setInboxForceOffline] = useState(false);
+
+  const [ordersQuery, setOrdersQuery] = useState('');
+  const [ordersFilter, setOrdersFilter] = useState<'all' | OrderStatus>('all');
+
+  const [queryDeskQuery, setQueryDeskQuery] = useState('');
+  const [queryDeskCustomer, setQueryDeskCustomer] = useState<string | null>(null);
+
+  const [settingsDraft, setSettingsDraft] = useState<Settings | null>(null);
 
   // Initialize Sovereign Offline Database & Online Reconnection Listeners
   useEffect(() => {
@@ -2005,10 +2043,27 @@ function App() {
           <Dashboard orders={orders} settings={settings} onNew={() => setEditing(null)} onEdit={setEditing} />
         </Route>
         <Route path="/orders">
-          <OrdersPage orders={orders} onNew={() => setEditing(null)} onEdit={setEditing} />
+          <OrdersPage
+            orders={orders}
+            onNew={() => setEditing(null)}
+            onEdit={setEditing}
+            query={ordersQuery}
+            setQuery={setOrdersQuery}
+            filter={ordersFilter}
+            setFilter={setOrdersFilter}
+          />
         </Route>
         <Route path="/inbox">
-          <InboxPage onSave={saveOrder} onNotify={notify} />
+          <InboxPage
+            message={inboxMessage}
+            setMessage={setInboxMessage}
+            parsed={inboxParsed}
+            setParsed={setInboxParsed}
+            forceOffline={inboxForceOffline}
+            setForceOffline={setInboxForceOffline}
+            onSave={saveOrder}
+            onNotify={notify}
+          />
         </Route>
         <Route path="/employees">
           <EmployeesPage />
@@ -2023,14 +2078,27 @@ function App() {
               title="Operational Query Desk"
               subtitle="Natural Language and Voice query layer answering all core operational questions with zero scrolling."
             />
-            <QueryDesk orders={orders} settings={settings} onEditOrder={setEditing} />
+            <QueryDesk
+              orders={orders}
+              settings={settings}
+              onEditOrder={setEditing}
+              query={queryDeskQuery}
+              onQueryChange={setQueryDeskQuery}
+              selectedCustomer={queryDeskCustomer}
+              onSelectCustomer={setQueryDeskCustomer}
+            />
           </div>
         </Route>
         <Route path="/settings">
           <SettingsPage
             settings={settings}
             online={online}
-            onSave={updateSettings}
+            formDraft={settingsDraft}
+            onFormDraftChange={setSettingsDraft}
+            onSave={(newSettings) => {
+              updateSettings(newSettings);
+              setSettingsDraft(null);
+            }}
             onExport={exportWorkspace}
             onImport={importWorkspace}
             onReset={resetWorkspace}

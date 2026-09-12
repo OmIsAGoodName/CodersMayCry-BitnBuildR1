@@ -11,6 +11,10 @@ interface QueryDeskProps {
   orders: Order[];
   settings: Settings;
   onEditOrder: (order: Order) => void;
+  query?: string;
+  onQueryChange?: (q: string) => void;
+  selectedCustomer?: string | null;
+  onSelectCustomer?: (c: string | null) => void;
 }
 
 function dateOnly(date = new Date()): string {
@@ -71,13 +75,26 @@ export async function transcribeAudioWithGemini(audioBlob: Blob, apiKey: string)
   return text.replace(/^[\"']|[\"']$/g, '');
 }
 
-export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
-  const [query, setQuery] = useState('');
+export function QueryDesk({
+  orders,
+  settings,
+  onEditOrder,
+  query: externalQuery,
+  onQueryChange: externalOnQueryChange,
+  selectedCustomer: externalCustomer,
+  onSelectCustomer: externalOnSelectCustomer,
+}: QueryDeskProps) {
+  const [internalQuery, setInternalQuery] = useState('');
+  const [internalCustomer, setInternalCustomer] = useState<string | null>(null);
+
+  const query = externalQuery !== undefined ? externalQuery : internalQuery;
+  const setQuery = externalOnQueryChange || setInternalQuery;
   const [isListening, setIsListening] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
   const [speechState, setSpeechState] = useState<'idle' | 'listening' | 'sound_detected' | 'speech_detected'>('idle');
   const [voiceStatus, setVoiceStatus] = useState<string>('');
-  const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
+  const selectedCustomer = externalCustomer !== undefined ? externalCustomer : internalCustomer;
+  const setSelectedCustomer = externalOnSelectCustomer || setInternalCustomer;
 
   const streamRef = useRef<MediaStream | null>(null);
   const cleanupAudioAnalyserRef = useRef<(() => void) | null>(null);

@@ -12,12 +12,26 @@ import {
   Clock, ArrowRight, UserPlus, AlertCircle, RefreshCw, Sparkles, Lock
 } from 'lucide-react';
 
+// Module-level session cache (reverts on full page refresh)
+let sessionInviteUsername = '';
+let sessionInviteRole: 'operator' | 'manager' = 'operator';
+
 export function EmployeesPage() {
   const { organization, members, currentMember, canManageSettings, currentUser } = useOrgAuth();
 
-  // Invite Form State
-  const [inviteUsername, setInviteUsername] = useState('');
-  const [inviteRole, setInviteRole] = useState<'operator' | 'manager'>('operator');
+  // Invite Form State (Persisted in session across tab switches, resets on page refresh)
+  const [inviteUsername, setInviteUsernameState] = useState(sessionInviteUsername);
+  const [inviteRole, setInviteRoleState] = useState<'operator' | 'manager'>(sessionInviteRole);
+
+  const setInviteUsername = (val: string) => {
+    sessionInviteUsername = val;
+    setInviteUsernameState(val);
+  };
+
+  const setInviteRole = (val: 'operator' | 'manager') => {
+    sessionInviteRole = val;
+    setInviteRoleState(val);
+  };
   const [userLookupStatus, setUserLookupStatus] = useState<{ checked: boolean; exists: boolean; fullName?: string } | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [sendingInvite, setSendingInvite] = useState(false);
