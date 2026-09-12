@@ -1,14 +1,16 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { BrandLogo } from '@/components/BrandLogo';
-import { registerUser, loginUser, isUsernameAvailable } from '@/lib/auth/userAuth';
-import { Shield, Sparkles, Store, User, Lock, KeyRound, ArrowRight, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { registerUser, loginUser, isUsernameAvailable, registerEmployeeUser } from '@/lib/auth/userAuth';
+import { Shield, Sparkles, Store, User, Lock, KeyRound, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Users, UserCheck } from 'lucide-react';
 
 interface AuthScreenProps {
   onSuccess: () => void;
 }
 
+type AuthTab = 'register_owner' | 'login' | 'register_employee';
+
 export function AuthScreen({ onSuccess }: AuthScreenProps) {
-  const [tab, setTab] = useState<'login' | 'register'>('register');
+  const [tab, setTab] = useState<AuthTab>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -19,7 +21,7 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'available' | 'taken'>('idle');
 
   const handleCheckUsername = async (val: string) => {
-    const clean = val.trim().toLowerCase();
+    const clean = val.trim().toLowerCase().replace(/^@/, '');
     setUsername(clean);
     setError(null);
     if (clean.length < 3) {
@@ -49,7 +51,7 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
     onSuccess();
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleOwnerRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password || !fullName.trim() || !storeName.trim()) {
       setError('All fields are required to establish your store account.');
@@ -67,6 +69,28 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
       onSuccess();
     } catch (err: any) {
       setError(err?.message || 'An unexpected error occurred during store creation.');
+      setLoading(false);
+    }
+  };
+
+  const handleEmployeeRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username.trim() || !password || !fullName.trim()) {
+      setError('Please fill in full name, username, and password.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await registerEmployeeUser({ username, password, fullName });
+      if (!res.ok) {
+        setError(res.error || 'Employee registration failed.');
+        setLoading(false);
+        return;
+      }
+      onSuccess();
+    } catch (err: any) {
+      setError(err?.message || 'An unexpected error occurred during employee registration.');
       setLoading(false);
     }
   };
@@ -98,96 +122,128 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
         position: 'absolute',
         bottom: '-10%',
         right: '25%',
-        width: '500px',
-        height: '500px',
+        width: '400px',
+        height: '400px',
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, transparent 70%)',
-        filter: 'blur(70px)',
+        background: 'radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, transparent 70%)',
+        filter: 'blur(60px)',
         pointerEvents: 'none',
       }} />
 
       <div style={{
         width: '100%',
-        maxWidth: '460px',
-        background: 'rgba(17, 24, 39, 0.85)',
+        maxWidth: '480px',
+        background: 'rgba(18, 24, 38, 0.85)',
+        border: '1px solid rgba(255, 255, 255, 0.12)',
+        borderRadius: '20px',
+        padding: '36px 30px',
+        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
         backdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 40px rgba(56, 189, 248, 0.08)',
-        borderRadius: '24px',
-        padding: '36px 32px',
-        position: 'relative',
         zIndex: 10,
+        position: 'relative',
       }}>
-        {/* Brand header */}
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{ display: 'inline-flex', justifyContent: 'center', marginBottom: '14px' }}>
-            <BrandLogo size="lg" />
+        {/* Brand Header */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{ marginBottom: '14px', transform: 'scale(1.15)' }}>
+            <BrandLogo />
           </div>
           <h1 style={{
             margin: '0 0 6px',
-            fontSize: '1.75rem',
+            fontSize: '1.6rem',
             fontWeight: 800,
-            letterSpacing: '-0.03em',
-            color: '#f8fafc',
-            fontFamily: "'Space Grotesk', system-ui, sans-serif",
+            letterSpacing: '-0.02em',
+            background: 'linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
           }}>
             Vendora Sovereign
           </h1>
-          <p style={{
-            margin: 0,
-            fontSize: '0.875rem',
-            color: '#94a3b8',
-            lineHeight: 1.5,
-          }}>
-            Multi-Tenant Smart Ledger with Sovereign On-Device Persistence
+          <p style={{ margin: 0, fontSize: '0.85rem', color: '#94a3b8', maxWidth: '340px', lineHeight: 1.4 }}>
+            Multi-Tenant Ledger & Offline Order Management System
           </p>
         </div>
 
-        {/* Tab switcher */}
+        {/* 3 Clean Modern Auth Mode Tabs */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          background: 'rgba(15, 23, 42, 0.6)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '14px',
+          gridTemplateColumns: '1fr 1fr 1.2fr',
+          gap: '4px',
+          background: 'rgba(10, 14, 23, 0.7)',
           padding: '4px',
-          marginBottom: '24px',
+          borderRadius: '14px',
+          marginBottom: '22px',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
         }}>
-          <button
-            type="button"
-            onClick={() => { setTab('register'); setError(null); }}
-            style={{
-              padding: '10px 14px',
-              borderRadius: '10px',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              background: tab === 'register' ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : 'transparent',
-              color: tab === 'register' ? '#ffffff' : '#94a3b8',
-              boxShadow: tab === 'register' ? '0 4px 14px rgba(239, 68, 68, 0.35)' : 'none',
-            }}
-          >
-            Create Store (New Owner)
-          </button>
           <button
             type="button"
             onClick={() => { setTab('login'); setError(null); }}
             style={{
-              padding: '10px 14px',
+              padding: '9px 4px',
               borderRadius: '10px',
-              fontSize: '0.875rem',
-              fontWeight: 600,
               border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
               background: tab === 'login' ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' : 'transparent',
               color: tab === 'login' ? '#ffffff' : '#94a3b8',
-              boxShadow: tab === 'login' ? '0 4px 14px rgba(2, 132, 199, 0.35)' : 'none',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px',
+              transition: 'all 0.2s ease',
+              boxShadow: tab === 'login' ? '0 4px 12px rgba(2, 132, 199, 0.3)' : 'none',
             }}
           >
-            Sign In
+            <KeyRound size={13} />
+            <span>Sign In</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setTab('register_owner'); setError(null); }}
+            style={{
+              padding: '9px 4px',
+              borderRadius: '10px',
+              border: 'none',
+              background: tab === 'register_owner' ? 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)' : 'transparent',
+              color: tab === 'register_owner' ? '#ffffff' : '#94a3b8',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px',
+              transition: 'all 0.2s ease',
+              boxShadow: tab === 'register_owner' ? '0 4px 12px rgba(239, 68, 68, 0.3)' : 'none',
+            }}
+          >
+            <Store size={13} />
+            <span>Owner</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setTab('register_employee'); setError(null); }}
+            style={{
+              padding: '9px 4px',
+              borderRadius: '10px',
+              border: 'none',
+              background: tab === 'register_employee' ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' : 'transparent',
+              color: tab === 'register_employee' ? '#ffffff' : '#94a3b8',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px',
+              transition: 'all 0.2s ease',
+              boxShadow: tab === 'register_employee' ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none',
+            }}
+          >
+            <Users size={13} />
+            <span>Employee</span>
           </button>
         </div>
 
@@ -197,177 +253,26 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
-            background: 'rgba(239, 68, 68, 0.12)',
+            background: 'rgba(239, 68, 68, 0.15)',
             border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '10px',
+            padding: '10px 14px',
+            marginBottom: '18px',
             color: '#fca5a5',
-            padding: '12px 14px',
-            borderRadius: '12px',
-            fontSize: '0.85rem',
-            marginBottom: '20px',
+            fontSize: '0.82rem',
           }}>
-            <AlertCircle size={18} style={{ flexShrink: 0, color: '#ef4444' }} />
+            <AlertCircle size={16} style={{ flexShrink: 0, color: '#ef4444' }} />
             <span>{error}</span>
           </div>
         )}
 
-        {tab === 'register' ? (
-          <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>
-                Store / Organisation Name
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Store size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: '#64748b' }} />
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Om Shetkar Tailoring, Apex Kirana"
-                  value={storeName}
-                  onChange={(e) => setStoreName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    padding: '11px 14px 11px 40px',
-                    borderRadius: '12px',
-                    background: 'rgba(15, 23, 42, 0.8)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#ffffff',
-                    fontSize: '0.9rem',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>
-                Your Full Name (Owner)
-              </label>
-              <div style={{ position: 'relative' }}>
-                <User size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: '#64748b' }} />
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Om Shetkar"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    padding: '11px 14px 11px 40px',
-                    borderRadius: '12px',
-                    background: 'rgba(15, 23, 42, 0.8)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#ffffff',
-                    fontSize: '0.9rem',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#cbd5e1' }}>
-                  Choose Unique Username
-                </label>
-                {availabilityChecking ? (
-                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Checking...</span>
-                ) : usernameStatus === 'available' ? (
-                  <span style={{ fontSize: '0.72rem', color: '#4ade80', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                    <CheckCircle2 size={12} /> Available
-                  </span>
-                ) : usernameStatus === 'taken' ? (
-                  <span style={{ fontSize: '0.72rem', color: '#f87171' }}>Taken</span>
-                ) : null}
-              </div>
-              <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: '14px', top: '11px', color: '#64748b', fontWeight: 600 }}>@</span>
-                <input
-                  type="text"
-                  required
-                  placeholder="unique_username"
-                  value={username}
-                  onChange={(e) => handleCheckUsername(e.target.value)}
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    padding: '11px 14px 11px 36px',
-                    borderRadius: '12px',
-                    background: 'rgba(15, 23, 42, 0.8)',
-                    border: usernameStatus === 'available' ? '1px solid rgba(74, 222, 128, 0.5)' : usernameStatus === 'taken' ? '1px solid rgba(248, 113, 113, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#ffffff',
-                    fontSize: '0.9rem',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>
-                Password
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Lock size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: '#64748b' }} />
-                <input
-                  type="password"
-                  required
-                  placeholder="Min 4 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    padding: '11px 14px 11px 40px',
-                    borderRadius: '12px',
-                    background: 'rgba(15, 23, 42, 0.8)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#ffffff',
-                    fontSize: '0.9rem',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                marginTop: '10px',
-                padding: '13px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
-                color: '#ffffff',
-                border: 'none',
-                fontWeight: 700,
-                fontSize: '0.95rem',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                boxShadow: '0 8px 24px rgba(239, 68, 68, 0.4)',
-                opacity: loading ? 0.7 : 1,
-                transition: 'all 0.2s ease',
-              }}
-            >
-              {loading ? (
-                <>
-                  <RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                  Creating Sovereign Store...
-                </>
-              ) : (
-                <>
-                  Create Store & Enter as Owner
-                  <ArrowRight size={18} />
-                </>
-              )}
-            </button>
-          </form>
-        ) : (
+        {/* TAB 1: SIGN IN (UNIVERSAL FOR OWNER & EMPLOYEE) */}
+        {tab === 'login' && (
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <p style={{ margin: '0 0 4px', fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.4 }}>
+              Sign in with your <strong>@username</strong> to load your store orders and role permissions.
+            </p>
+
             <div>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>
                 Username
@@ -379,7 +284,7 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
                   required
                   placeholder="your_username"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value.trim().toLowerCase())}
+                  onChange={(e) => setUsername(e.target.value.trim().toLowerCase().replace(/^@/, ''))}
                   style={{
                     width: '100%',
                     boxSizing: 'border-box',
@@ -459,6 +364,310 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
           </form>
         )}
 
+        {/* TAB 2: OWNER REGISTRATION */}
+        {tab === 'register_owner' && (
+          <form onSubmit={handleOwnerRegister} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <p style={{ margin: '0 0 2px', fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.4 }}>
+              Register as a <strong>Store Owner</strong> to establish an isolated ledger and invite employees.
+            </p>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>
+                Store / Business Name
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Store size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: '#64748b' }} />
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Om Electricals & Hardware"
+                  value={storeName}
+                  onChange={(e) => setStoreName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '11px 14px 11px 40px',
+                    borderRadius: '12px',
+                    background: 'rgba(15, 23, 42, 0.8)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#ffffff',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>
+                Owner Full Name
+              </label>
+              <div style={{ position: 'relative' }}>
+                <User size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: '#64748b' }} />
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Om Shetkar"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '11px 14px 11px 40px',
+                    borderRadius: '12px',
+                    background: 'rgba(15, 23, 42, 0.8)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#ffffff',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#cbd5e1' }}>
+                  Owner Username
+                </label>
+                {availabilityChecking && <span style={{ fontSize: '0.72rem', color: '#38bdf8' }}>Checking availability...</span>}
+                {usernameStatus === 'available' && <span style={{ fontSize: '0.72rem', color: '#4ade80' }}>✓ Available</span>}
+                {usernameStatus === 'taken' && <span style={{ fontSize: '0.72rem', color: '#f87171' }}>✗ Taken</span>}
+              </div>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '14px', top: '11px', color: '#64748b', fontWeight: 600 }}>@</span>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. omshetkar"
+                  value={username}
+                  onChange={(e) => handleCheckUsername(e.target.value)}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '11px 14px 11px 36px',
+                    borderRadius: '12px',
+                    background: 'rgba(15, 23, 42, 0.8)',
+                    border: usernameStatus === 'available' ? '1px solid rgba(74, 222, 128, 0.5)' : usernameStatus === 'taken' ? '1px solid rgba(248, 113, 113, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#ffffff',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>
+                Password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: '#64748b' }} />
+                <input
+                  type="password"
+                  required
+                  placeholder="Min 4 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '11px 14px 11px 40px',
+                    borderRadius: '12px',
+                    background: 'rgba(15, 23, 42, 0.8)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#ffffff',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                marginTop: '8px',
+                padding: '13px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                color: '#ffffff',
+                border: 'none',
+                fontWeight: 700,
+                fontSize: '0.95rem',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 8px 24px rgba(239, 68, 68, 0.4)',
+                opacity: loading ? 0.7 : 1,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {loading ? (
+                <>
+                  <RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                  Creating Sovereign Store...
+                </>
+              ) : (
+                <>
+                  Create Store & Enter as Owner
+                  <ArrowRight size={18} />
+                </>
+              )}
+            </button>
+          </form>
+        )}
+
+        {/* TAB 3: JOIN AS EMPLOYEE */}
+        {tab === 'register_employee' && (
+          <form onSubmit={handleEmployeeRegister} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{
+              background: 'rgba(139, 92, 246, 0.12)',
+              border: '1px solid rgba(139, 92, 246, 0.25)',
+              borderRadius: '12px',
+              padding: '10px 14px',
+              fontSize: '0.8rem',
+              color: '#c4b5fd',
+              lineHeight: 1.4,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '8px',
+            }}>
+              <UserCheck size={16} style={{ flexShrink: 0, marginTop: '2px', color: '#a78bfa' }} />
+              <span>
+                Register your employee account. Once your store owner inputs your <strong>@username</strong> in their Employees tab, you can accept and manage orders under them!
+              </span>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>
+                Your Full Name
+              </label>
+              <div style={{ position: 'relative' }}>
+                <User size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: '#64748b' }} />
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Anand Verma"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '11px 14px 11px 40px',
+                    borderRadius: '12px',
+                    background: 'rgba(15, 23, 42, 0.8)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#ffffff',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#cbd5e1' }}>
+                  Choose Your Username
+                </label>
+                {availabilityChecking && <span style={{ fontSize: '0.72rem', color: '#38bdf8' }}>Checking...</span>}
+                {usernameStatus === 'available' && <span style={{ fontSize: '0.72rem', color: '#4ade80' }}>✓ Available</span>}
+                {usernameStatus === 'taken' && <span style={{ fontSize: '0.72rem', color: '#f87171' }}>✗ Taken</span>}
+              </div>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '14px', top: '11px', color: '#64748b', fontWeight: 600 }}>@</span>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. anand_ops"
+                  value={username}
+                  onChange={(e) => handleCheckUsername(e.target.value)}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '11px 14px 11px 36px',
+                    borderRadius: '12px',
+                    background: 'rgba(15, 23, 42, 0.8)',
+                    border: usernameStatus === 'available' ? '1px solid rgba(74, 222, 128, 0.5)' : usernameStatus === 'taken' ? '1px solid rgba(248, 113, 113, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#ffffff',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+              <small style={{ display: 'block', marginTop: '4px', fontSize: '0.72rem', color: '#94a3b8' }}>
+                You will share this username with your store owner so they can invite you.
+              </small>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>
+                Create Password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: '#64748b' }} />
+                <input
+                  type="password"
+                  required
+                  placeholder="Min 4 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '11px 14px 11px 40px',
+                    borderRadius: '12px',
+                    background: 'rgba(15, 23, 42, 0.8)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#ffffff',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                marginTop: '8px',
+                padding: '13px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+                color: '#ffffff',
+                border: 'none',
+                fontWeight: 700,
+                fontSize: '0.95rem',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 8px 24px rgba(139, 92, 246, 0.4)',
+                opacity: loading ? 0.7 : 1,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {loading ? (
+                <>
+                  <RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                  Creating Employee Account...
+                </>
+              ) : (
+                <>
+                  Create Employee Account
+                  <ArrowRight size={18} />
+                </>
+              )}
+            </button>
+          </form>
+        )}
+
         {/* Security badge footer */}
         <div style={{
           marginTop: '24px',
@@ -473,7 +682,7 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Shield size={14} style={{ color: '#38bdf8' }} />
-            <span>SHA-256 Multi-Tenant Store Isolation · Supabase Cloud Sync</span>
+            <span>SHA-256 Multi-Tenant Isolation · Supabase Cloud Sync</span>
           </div>
           <button
             type="button"

@@ -1,6 +1,8 @@
 import { OrgAuthProvider, useOrgAuth } from '@/context/OrgAuthContext';
 import { OrgHeader } from '@/components/OrgHeader';
 import { TeamManagementPage } from '@/pages/TeamManagementPage';
+import { EmployeesPage } from '@/pages/EmployeesPage';
+import { EmployeeLobbyModal } from '@/components/EmployeeLobbyModal';
 import { supabase } from '@/lib/supabase';
 import { enqueueMutation, flushPendingMutations, pullCloudOrders, cloudToOrder, syncStoreOrders, orderToCloud, clearPendingMutation } from '@/lib/sync/offlineSyncManager';
 import { Users as UsersIcon } from 'lucide-react';
@@ -149,6 +151,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
     { href: '/', label: 'Workbench', icon: Home },
     { href: '/orders', label: 'Ledger', icon: ClipboardList },
     { href: '/inbox', label: 'Universal Inbox', icon: Inbox },
+    { href: '/employees', label: 'Employees', icon: UsersIcon },
     { href: '/structured-json', label: 'Structured JSON', icon: FileJson },
     { href: '/query', label: 'Query Desk', icon: BarChart3 },
     { href: '/sync', label: 'CRDT Sync & Sim', icon: CloudUpload },
@@ -168,7 +171,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
         </Link>
 
         {/* Dynamic Operator Profile at Top - Always accessible without scrolling */}
-        <Link href="/team" className="operator-profile-card" title="Click to view/manage Team & Roles Hierarchy">
+        <Link href="/employees" className="operator-profile-card" title="Click to view/manage Team & Roles Hierarchy">
           <span className="initials">{currentMember?.avatarInitials || 'OW'}</span>
           <div className="operator-info">
             <div className="operator-name-row">
@@ -391,6 +394,7 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
           </div>
         )}
 
+        <EmployeeLobbyModal />
         <main>{children}</main>
       </div>
     </div>
