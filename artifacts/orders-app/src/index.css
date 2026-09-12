@@ -29,7 +29,7 @@
   --radius: 12px;
   --app-font-sans: 'DM Sans', sans-serif;
   --app-font-serif: 'Fraunces', serif;
-  --app-font-mono: 'Space Mono', monospace;
+  --app-font-mono: 'Space Mono', 'Segoe UI Symbol', 'Consolas', monospace;
 
   /* Default Solid Day Theme (Friday - Electric Cobalt) */
   --day-accent: #0284C7;
@@ -847,7 +847,7 @@ h3 { font-size: 15px; color: #fff; }
 .pill-info { background: #0c4a6e; color: #38bdf8; }
 .pill-purple { background: #581c87; color: #c084fc; }
 .badge-count { font: 700 11px var(--app-font-mono); background: #1c2433; padding: 3px 8px; border-radius: 4px; color: #fff; }
-.badge-total { font: 700 14px var(--app-font-mono); color: #EF4444; }
+.badge-total { font: 700 14px var(--app-font-sans); color: #ef4444; }
 
 .mini-order-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .mini-order-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 6px; background: #0d1117; cursor: pointer; transition: background 0.12s; }
@@ -866,8 +866,8 @@ h3 { font-size: 15px; color: #fff; }
 .debtor-info strong { display: block; font-size: 13px; color: #fff; }
 .debtor-info span { font-size: 11px; color: #94a3b8; }
 .debtor-actions { display: flex; align-items: center; gap: 8px; }
-.balance-due { font: 700 13px var(--app-font-mono); color: #EF4444; }
-.btn-wa { width: 28px; height: 28px; border-radius: 6px; background: #25d366; color: #fff; display: grid; place-items: center; text-decoration: none; }
+.balance-due { font: 700 14px var(--app-font-sans); color: #ef4444; letter-spacing: -0.01em; }
+
 
 .customer-history-box { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .history-timeline { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; }

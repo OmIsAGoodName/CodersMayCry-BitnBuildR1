@@ -1,10 +1,10 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Search, Mic, MicOff, AlertCircle, Clock, CheckCircle2, IndianRupee,
-  Layers, User, ChevronRight, Sparkles, MessageCircle, Phone, ArrowUpRight,
-  Volume2, X
+  Layers, User, ChevronRight, Sparkles, Phone, ArrowUpRight
 } from 'lucide-react';
 import { Order, Settings } from '@/lib/storage/offlineDb';
+import { getSavedProviderKeys } from '@/lib/parser/hybridParser';
 
 interface QueryDeskProps {
   orders: Order[];
@@ -24,7 +24,50 @@ function dateOffset(offset: number): string {
 }
 
 function money(value: number): string {
-  return `?${value.toLocaleString('en-IN')}`;
+  return `\u20B9${value.toLocaleString('en-IN')}`;
+}
+
+async function transcribeAudioWithGemini(audioBlob: Blob, apiKey: string): Promise<string> {
+  const reader = new FileReader();
+  const base64Promise = new Promise<string>((resolve, reject) => {
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      const base64 = result.split(',')[1] || '';
+      resolve(base64);
+    };
+    reader.onerror = reject;
+  });
+  reader.readAsDataURL(audioBlob);
+  const base64Audio = await base64Promise;
+  if (!base64Audio) return '';
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          {
+            inlineData: {
+              mimeType: audioBlob.type || 'audio/webm',
+              data: base64Audio
+            }
+          },
+          {
+            text: 'Transcribe what is spoken in this audio in English or Hinglish. Return ONLY the transcribed query text, nothing else.'
+          }
+        ]
+      }]
+    })
+  });
+
+  if (!res.ok) {
+    throw new Error(`Gemini transcription error: ${res.status}`);
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+  return text.replace(/^[\"']|[\"']$/g, '');
 }
 
 export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
@@ -32,7 +75,12 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
   const [isListening, setIsListening] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<string>('');
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
+
+  const streamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
   const recognitionRef = useRef<any>(null);
+  const speechCapturedRef = useRef<boolean>(false);
 
   const todayStr = dateOnly();
   const next7DaysStr = dateOffset(7);
@@ -72,7 +120,6 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
         map.get(order.customer)!.push(order);
       }
     }
-    // Sort each customer's orders by date descending
     for (const [_, list] of map.entries()) {
       list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }
@@ -93,10 +140,9 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
     const q = query.toLowerCase().trim();
     if (!q) return 'all';
 
-    // 1. Check for specific customer mention in query (e.g. "Asha ka pichla order", "Rahul", "Priya's specs")
+    // 1. Check for specific customer mention in query (e.g. "Asha ka pichla order", "Rahul")
     for (const customerName of customerHistoryMap.keys()) {
       const cLow = customerName.toLowerCase();
-      // Match exact name or "<name> ka / ke / ki / 's"
       if (q.includes(cLow)) {
         if (selectedCustomer !== customerName) {
           setSelectedCustomer(customerName);
@@ -158,95 +204,157 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
     return 'search';
   }, [query, customerHistoryMap, selectedCustomer]);
 
-  // Voice Query Integration (Google Web Speech API with en-IN Indian/Hinglish Language Model)
-  const toggleVoice = () => {
+  // Start Voice Recording (Dual: MediaRecorder + Web Speech API + Gemini Fallback)
+  const toggleVoice = async () => {
     if (typeof window === 'undefined') return;
 
     if (isListening) {
-      if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch {}
-      }
-      setIsListening(false);
-      return;
-    }
-
-    const SpeechRecognition = (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition
-      || (window as unknown as { webkitSpeechRecognition?: any }).webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      setVoiceStatus('?? Speech recognition is not supported in this browser (works best on Chrome/Edge). Tap any sample chip below to test!');
+      await stopVoice();
       return;
     }
 
     try {
-      const recognition = new SpeechRecognition();
-      recognitionRef.current = recognition;
-      // 'en-IN' uses Google\'s Indian bilingual acoustic model which transcribes English and Hinglish smoothly
-      recognition.lang = 'en-IN';
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.maxAlternatives = 1;
+      speechCapturedRef.current = false;
+      audioChunksRef.current = [];
+
+      // 1. Request actual microphone media stream from browser
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      // 2. Start MediaRecorder to capture audio
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : MediaRecorder.isTypeSupported('audio/mp4')
+        ? 'audio/mp4'
+        : '';
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+      recorder.start(250);
 
       setIsListening(true);
-      setVoiceStatus('Listening in English / Hinglish... speak your query');
+      setVoiceStatus('Recording audio... Speak your question in English or Hinglish');
 
-      recognition.onresult = (event: any) => {
-        let interimTranscript = '';
-        let finalTranscript = '';
+      // 3. Simultaneously launch Web Speech Recognition for instant 0ms typing if supported
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        try {
+          const recognition = new SpeechRecognition();
+          recognitionRef.current = recognition;
+          recognition.lang = 'en-IN';
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.maxAlternatives = 1;
 
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
-          }
+          recognition.onresult = (event: any) => {
+            let interim = '';
+            let final = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+              if (event.results[i].isFinal) {
+                final += event.results[i][0].transcript;
+              } else {
+                interim += event.results[i][0].transcript;
+              }
+            }
+            const heard = final || interim;
+            if (heard) {
+              setQuery(heard);
+              speechCapturedRef.current = true;
+            }
+          };
+
+          recognition.onerror = (e: any) => {
+            console.warn('SpeechRecognition notice:', e.error);
+          };
+
+          recognition.start();
+        } catch (recErr) {
+          console.warn('SpeechRecognition start failed, will rely on audio recording:', recErr);
         }
-
-        const heardText = finalTranscript || interimTranscript;
-        if (heardText) {
-          setQuery(heardText);
-        }
-
-        if (finalTranscript) {
-          setIsListening(false);
-          setVoiceStatus(`??? Understood: "${finalTranscript}"`);
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        setIsListening(false);
-        if (event.error === 'not-allowed') {
-          setVoiceStatus('?? Microphone access was blocked. Please allow mic permission in your browser URL bar.');
-        } else if (event.error === 'no-speech') {
-          setVoiceStatus('No speech detected. Tap mic to try again.');
-        } else {
-          setVoiceStatus(`Voice input ended (${event.error || 'idle'}).`);
-        }
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognition.start();
-    } catch (err) {
-      console.warn('Speech recognition error:', err);
+      }
+    } catch (err: any) {
+      console.error('Microphone access failed:', err);
       setIsListening(false);
-      setVoiceStatus('Unable to initialize microphone. Please check browser permissions.');
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setVoiceStatus('Microphone permission blocked. Please allow microphone in browser URL bar.');
+      } else {
+        setVoiceStatus('Could not access microphone. Please check device audio settings.');
+      }
     }
   };
 
-  // Stop listening helper
-  const stopVoice = () => {
+  // Stop Recording & Finalize Transcription
+  const stopVoice = async () => {
+    setIsListening(false);
+
+    // Stop Speech Recognition if active
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch {}
+      recognitionRef.current = null;
     }
-    setIsListening(false);
+
+    // Stop MediaRecorder and process recorded audio chunks
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      const recorder = mediaRecorderRef.current;
+      const audioBlobPromise = new Promise<Blob>((resolve) => {
+        recorder.onstop = () => {
+          const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+          resolve(blob);
+        };
+      });
+      try { recorder.stop(); } catch {}
+
+      // Stop audio stream tracks
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+
+      // If speech recognition did not capture text, transcribe via Gemini
+      if (!speechCapturedRef.current) {
+        const audioBlob = await audioBlobPromise;
+        if (audioBlob.size > 800) {
+          const geminiKey = getSavedProviderKeys().gemini;
+          if (geminiKey) {
+            setVoiceStatus('Transcribing recorded audio with Google Gemini...');
+            try {
+              const transcribed = await transcribeAudioWithGemini(audioBlob, geminiKey);
+              if (transcribed) {
+                setQuery(transcribed);
+                setVoiceStatus(`Transcribed: "${transcribed}"`);
+                return;
+              }
+            } catch (gemErr) {
+              console.warn('Gemini audio transcription failed:', gemErr);
+            }
+          }
+        }
+      }
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+
+    if (speechCapturedRef.current) {
+      setVoiceStatus('Audio query transcribed successfully!');
+    } else {
+      setVoiceStatus('Recording stopped. Tap mic or any sample chip below to query.');
+    }
   };
 
-  // Cleanup recognition on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      }
       if (recognitionRef.current) {
         try { recognitionRef.current.abort(); } catch {}
       }
@@ -269,20 +377,20 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
           />
           {query && (
             <button className="clear-btn" onClick={() => { setQuery(''); setSelectedCustomer(null); setVoiceStatus(''); }} title="Clear query">
-              ?
+              ✕
             </button>
           )}
           <button
             className={`voice-btn ${isListening ? 'listening' : ''}`}
             onClick={toggleVoice}
-            title={isListening ? 'Listening in English/Hinglish... Tap to stop' : 'Voice Query (English & Hinglish speech)'}
+            title={isListening ? 'Recording audio... Tap to stop' : 'Record Voice Query (English & Hinglish)'}
             data-testid="button-voice-query"
           >
             {isListening ? <MicOff size={16} /> : <Mic size={16} />}
           </button>
         </div>
 
-        {/* Live Audio Listening Feedback Banner */}
+        {/* Live Audio Recording Banner */}
         {isListening && (
           <div className="voice-listening-banner">
             <div className="voice-wave-bars">
@@ -293,19 +401,19 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
               <span className="wave-bar" />
             </div>
             <span className="voice-listening-text">
-              ??? <strong>Listening in English & Hinglish...</strong> Speak now (e.g., <em>"Kiska paisa baki hai?"</em> or <em>"Aaj kya due hai?"</em>)
+              <strong>Recording Audio (Hinglish & English)...</strong> Speak your question (e.g. <em>"Kiska paisa baki hai?"</em>)
             </span>
             <button className="voice-stop-btn" onClick={stopVoice}>
-              Stop
+              Done / Stop
             </button>
           </div>
         )}
 
-        {/* Voice status banner when transcription completes or reports note */}
+        {/* Voice status banner */}
         {voiceStatus && !isListening && (
           <div className="voice-status-pill">
             <span>{voiceStatus}</span>
-            <button onClick={() => setVoiceStatus('')} title="Dismiss">?</button>
+            <button onClick={() => setVoiceStatus('')} title="Dismiss">✕</button>
           </div>
         )}
 
@@ -378,7 +486,7 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
                       <div key={o.id} className="mini-order-item" onClick={() => onEditOrder(o)}>
                         <div className="item-info">
                           <strong>{o.customer}</strong>
-                          <span>{o.items.map((it) => `${it.quantity} ? ${it.description}`).join(', ')}</span>
+                          <span>{o.items.map((it) => `${it.quantity} × ${it.description}`).join(', ')}</span>
                         </div>
                         <div className="item-meta">
                           <span className="tag-overdue">Due {o.dueDate}</span>
@@ -401,7 +509,7 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
                       <div key={o.id} className="mini-order-item" onClick={() => onEditOrder(o)}>
                         <div className="item-info">
                           <strong>{o.customer}</strong>
-                          <span>{o.items.map((it) => `${it.quantity} ? ${it.description}`).join(', ')}</span>
+                          <span>{o.items.map((it) => `${it.quantity} × ${it.description}`).join(', ')}</span>
                         </div>
                         <div className="item-meta">
                           <span className="tag-today">Today</span>
@@ -438,22 +546,11 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
                         <div className="avatar-circle">{d.customer.charAt(0)}</div>
                         <div className="debtor-info">
                           <strong>{d.customer}</strong>
-                          <span>{d.phone || 'No phone recorded'} ? {d.orders.length} order{d.orders.length > 1 ? 's' : ''}</span>
+                          <span>{d.phone || 'No phone recorded'} • {d.orders.length} order{d.orders.length > 1 ? 's' : ''}</span>
                         </div>
                       </div>
                       <div className="debtor-actions">
                         <div className="balance-due">{money(d.balance)}</div>
-                        {d.phone && (
-                          <a
-                            href={`https://wa.me/${d.phone.replace(/[^0-9]/g, '')}?text=Hi%20${encodeURIComponent(d.customer)},%20gentle%20reminder%20regarding%20your%20pending%20balance%20of%20${encodeURIComponent(money(d.balance))}%20at%20${encodeURIComponent(settings.operatorName)}'s%20${encodeURIComponent(settings.businessType)}.`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn-wa"
-                            title="Send WhatsApp Reminder"
-                          >
-                            <MessageCircle size={14} />
-                          </a>
-                        )}
                       </div>
                     </div>
                   ))}
@@ -505,10 +602,10 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
                   <div className="history-timeline">
                     {customerHistoryMap.get(selectedCustomer)!.map((ord, idx) => (
                       <div key={ord.id} className="timeline-node" onClick={() => onEditOrder(ord)}>
-                        <div className="node-badge">{idx === 0 ? '? Latest Order' : `Order #${idx + 1}`}</div>
+                        <div className="node-badge">{idx === 0 ? '✨ Latest Order' : `Order #${idx + 1}`}</div>
                         <div className="node-content">
                           <div className="node-header">
-                            <strong>{ord.items.map((it) => `${it.quantity} ? ${it.description}`).join(', ')}</strong>
+                            <strong>{ord.items.map((it) => `${it.quantity} × ${it.description}`).join(', ')}</strong>
                             <span>{ord.dueDate}</span>
                           </div>
 
@@ -524,7 +621,7 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
                           )}
 
                           <div className="node-foot">
-                            <span>Total: {money(ord.amount)} ? Paid: {money(ord.paidAmount)}</span>
+                            <span>Total: {money(ord.amount)} • Paid: {money(ord.paidAmount)}</span>
                             <span className={`status-pill status-${ord.status}`}>{ord.status}</span>
                           </div>
                         </div>
@@ -561,9 +658,9 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
                   </div>
                   <div className="capacity-status">
                     {capacityPercent >= 90 ? (
-                      <span className="cap-tag cap-full">?? Near Capacity</span>
+                      <span className="cap-tag cap-full">⚠️ Near Capacity</span>
                     ) : (
-                      <span className="cap-tag cap-open">? {Math.max(0, (settings.capacity || 12) - weeklyCommittedItems)} Slots Open</span>
+                      <span className="cap-tag cap-open">✅ {Math.max(0, (settings.capacity || 12) - weeklyCommittedItems)} Slots Open</span>
                     )}
                   </div>
                 </div>
@@ -579,7 +676,7 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
                 </div>
 
                 <div className="capacity-subtext">
-                  <span>?? Next 7 Days (Due up to {next7DaysStr})</span>
+                  <span>📅 Next 7 Days (Due up to {next7DaysStr})</span>
                   <span>Target: {settings.capacity || 12} units/week</span>
                 </div>
               </div>
@@ -593,7 +690,7 @@ export function QueryDesk({ orders, settings, onEditOrder }: QueryDeskProps) {
                       <div key={o.id} className="mini-order-item" onClick={() => onEditOrder(o)}>
                         <div className="item-info">
                           <strong>{o.customer}</strong>
-                          <span>{o.items.map((it) => `${it.quantity} ? ${it.description}`).join(', ')}</span>
+                          <span>{o.items.map((it) => `${it.quantity} × ${it.description}`).join(', ')}</span>
                         </div>
                         <div className="item-meta">
                           <span>{o.dueDate}</span>
