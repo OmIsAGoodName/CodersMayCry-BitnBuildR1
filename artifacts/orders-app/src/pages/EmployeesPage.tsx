@@ -252,7 +252,7 @@ export function EmployeesPage() {
           <Users className="stat-icon" size={44} />
         </div>
 
-        {isOwner && (
+        {isOwner ? (
           <div className="stat-card">
             <div className="stat-label">Pending Invites</div>
             <div className="stat-value" style={{ color: pendingInvites.length > 0 ? '#fbbf24' : 'inherit' }}>
@@ -261,16 +261,16 @@ export function EmployeesPage() {
             <div className="stat-meta">{pendingInvites.length > 0 ? 'Awaiting employee acceptance' : 'No pending invitations'}</div>
             <Clock className="stat-icon" size={44} />
           </div>
-        )}
-
-        <div className="stat-card">
-          <div className="stat-label">Active Store Ledger</div>
-          <div className="stat-value" style={{ fontSize: 20, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {organization?.name || 'Store'}
+        ) : (
+          <div className="stat-card">
+            <div className="stat-label">Store Team Status</div>
+            <div className="stat-value" style={{ fontSize: 20, color: '#10b981' }}>
+              OPERATIONAL
+            </div>
+            <div className="stat-meta">Cloud CRDT team sync active</div>
+            <Clock className="stat-icon" size={44} />
           </div>
-          <div className="stat-meta">Commercial tenant workspace</div>
-          <ShieldCheck className="stat-icon" size={44} />
-        </div>
+        )}
 
         <div className="stat-card">
           <div className="stat-label">Your Authority</div>
