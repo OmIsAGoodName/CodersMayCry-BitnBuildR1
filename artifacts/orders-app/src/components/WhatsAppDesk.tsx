@@ -7,7 +7,7 @@ import {
 , KeyRound} from 'lucide-react';
 import { Order } from '@/lib/storage/offlineDb';
 import { parseUniversalMessage } from '@/lib/parser/universalParser';
-import { parseOrderHybrid } from '@/lib/parser/hybridParser';
+import { parseOrderHybrid, getActiveModelId, setActiveModelId } from '@/lib/parser/hybridParser';
 
 interface WhatsAppStatus {
   status: 'disconnected' | 'connecting' | 'qr_ready' | 'connected';
@@ -149,6 +149,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
   });
 
   const [activeActivity, setActiveActivity] = useState<ChatActivity | null>(null);
+  const [activeModel, setActiveModel] = useState<string>(() => getActiveModelId());
   const [messages, setMessages] = useState<ParsedWhatsAppOrder[]>([]);
   const [connecting, setConnecting] = useState(false);
   const [autoIngest, setAutoIngest] = useState(true);
@@ -384,7 +385,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
           let parserBadge = 'Sovereign Local Engine';
 
           try {
-            const hybridRes = await parseOrderHybrid(cleanMerged);
+            const hybridRes = await parseOrderHybrid(cleanMerged, { modelId: activeModel, forceOffline: activeModel === 'offline-engine' });
             parsedRes = hybridRes;
             parserBadge = hybridRes._source === 'online_ai'
               ? (hybridRes._modelUsed ? `Online AI (${hybridRes._modelUsed})` : 'Online AI (Gemini 3.6 Flash)')
@@ -449,7 +450,14 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
     }, 450);
   };
 
-    const handleToggleKeywordGate = async () => {
+      const handleToggleEngine = () => {
+    const nextModel = activeModel === 'gemini-3.6-flash' ? 'offline-engine' : 'gemini-3.6-flash';
+    setActiveModel(nextModel);
+    setActiveModelId(nextModel);
+    onNotify(nextModel === 'gemini-3.6-flash' ? '⚡ Switched to Online AI (Gemini 3.6 Flash)' : '🛡️ Switched to Sovereign Local Engine (Offline)');
+  };
+
+  const handleToggleKeywordGate = async () => {
     const nextVal = !(status.requireKeyword ?? true);
     setStatus((prev) => ({ ...prev, requireKeyword: nextVal }));
     try {
@@ -588,6 +596,85 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
               {status.status === 'qr_ready' ? 'Regenerate QR' : 'Pair WhatsApp'}
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Interactive Command & Security Controls Bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 12,
+          padding: '12px 18px',
+          background: 'hsl(var(--card))',
+          border: '1px solid hsl(var(--border))',
+          borderRadius: 12,
+          marginBottom: 18,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'hsl(var(--muted-foreground))' }}>
+            INTAKE CONTROLS:
+          </span>
+
+          {/* Toggle 1: AI Engine vs Sovereign Local Engine */}
+          <button
+            type="button"
+            id="toggle-ai-engine-btn"
+            onClick={handleToggleEngine}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              padding: '6px 14px',
+              borderRadius: 8,
+              background: activeModel === 'gemini-3.6-flash' ? 'rgba(168, 85, 247, 0.18)' : 'rgba(16, 185, 129, 0.15)',
+              color: activeModel === 'gemini-3.6-flash' ? '#C084FC' : '#10B981',
+              border: activeModel === 'gemini-3.6-flash' ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid rgba(16, 185, 129, 0.4)',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            title="Click to switch between Online AI (Gemini 3.6 Flash) and Sovereign Local Engine"
+          >
+            {activeModel === 'gemini-3.6-flash' ? <Sparkles size={14} color="#C084FC" /> : <ShieldCheck size={14} color="#10B981" />}
+            <span>Engine: {activeModel === 'gemini-3.6-flash' ? 'Online AI (Gemini 3.6 Flash)' : 'Sovereign Local Engine (Offline)'}</span>
+            <span style={{ fontSize: 10, opacity: 0.7, marginLeft: 2 }}>(Click to switch)</span>
+          </button>
+
+          {/* Toggle 2: Privacy Keyword Gate */}
+          <button
+            type="button"
+            id="toggle-keyword-gate-btn"
+            onClick={handleToggleKeywordGate}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              padding: '6px 14px',
+              borderRadius: 8,
+              background: (status.requireKeyword ?? true) ? 'rgba(59, 130, 246, 0.18)' : 'rgba(234, 179, 8, 0.15)',
+              color: (status.requireKeyword ?? true) ? '#38BDF8' : '#FBBF24',
+              border: (status.requireKeyword ?? true) ? '1px solid rgba(59, 130, 246, 0.45)' : '1px solid rgba(234, 179, 8, 0.4)',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            title="When active, messages MUST start with 'order' (e.g. 'Order: ...') so personal family chats are 100% ignored. Click to switch to Auto-Detect All."
+          >
+            <KeyRound size={14} />
+            <span>Keyword Gate: {(status.requireKeyword ?? true) ? 'Prefix "Order" REQUIRED' : 'Auto-Detect All Messages'}</span>
+            <span style={{ fontSize: 10, opacity: 0.7, marginLeft: 2 }}>(Click to switch)</span>
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>
+          <span>🛡️ <strong>Zero-Leak Privacy:</strong> {(status.requireKeyword ?? true) ? 'Personal & domestic chats strictly shielded' : 'AI intent scanning active'}</span>
         </div>
       </div>
 
