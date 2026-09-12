@@ -21,7 +21,8 @@ export function OrgHeader() {
   const [memberDropdownOpen, setMemberDropdownOpen] = useState(false);
   const [orgModalOpen, setOrgModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const { user } = useOrgAuth();
+  const { currentUser, canManageSettings } = useOrgAuth();
+  const isOwner = canManageSettings || currentMember?.role === 'owner' || currentUser?.role === 'owner';
   const [syncing, setSyncing] = useState(false);
 
   // New Organization Form State
@@ -65,60 +66,22 @@ export function OrgHeader() {
       <div className="org-header-bar">
         {/* Organization and Active Role Switcher */}
         <div className="org-identity-group">
-          <div className="org-details" style={{ cursor: 'pointer' }} onClick={() => setOrgModalOpen(true)} title="Click to switch or create new organization">
+          <div className="org-details" style={{ cursor: isOwner ? 'pointer' : 'default' }} onClick={() => isOwner && setOrgModalOpen(true)} title={isOwner ? "Click to switch or create store" : "Active store ledger"}>
             <span className="org-label">ORGANIZATION • STORE TENANT</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span className="org-name">{organization.name}</span>
-              <span className="org-switch-pill">Switch Store <ChevronDown size={11} /></span>
+              {isOwner && <span className="org-switch-pill">Switch Store <ChevronDown size={11} /></span>}
             </div>
           </div>
 
-          <div className="member-switcher-wrap">
-            <button
-              type="button"
-              className="member-switch-btn"
-              onClick={() => setMemberDropdownOpen(!memberDropdownOpen)}
-              title="Switch active user profile (Owner, Manager, Operator)"
-            >
+          <div className="member-switcher-wrap" style={{ cursor: 'default' }} title={`Authenticated as @${currentUser?.username || 'user'} (${currentMember.role.toUpperCase()})`}>
+            <div className="member-switch-btn" style={{ cursor: 'default' }}>
               <span className="avatar-pill">{currentMember.avatarInitials}</span>
               <div className="member-meta">
                 <span className="member-name">{currentMember.name}</span>
                 {getRoleBadge(currentMember.role)}
               </div>
-              <ChevronDown size={14} style={{ color: '#94a3b8' }} />
-            </button>
-
-            {memberDropdownOpen && (
-              <div className="member-dropdown-menu">
-                <div className="dropdown-title">
-                  <span>TEAM HIERARCHY SWITCHER</span>
-                  <small>Select active profile</small>
-                </div>
-                <div className="dropdown-list">
-                  {members.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      className={`dropdown-item ${m.id === currentMember.id ? 'active' : ''}`}
-                      onClick={() => {
-                        switchMember(m.id);
-                        setMemberDropdownOpen(false);
-                      }}
-                    >
-                      <span className="avatar-pill">{m.avatarInitials}</span>
-                      <div className="item-details">
-                        <strong>{m.name}</strong>
-                        <div className="item-role-line">
-                          {getRoleBadge(m.role)}
-                          {m.email && <span className="item-email">{m.email}</span>}
-                        </div>
-                      </div>
-                      {m.id === currentMember.id && <Check size={14} color="var(--day-accent)" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         </div>
 

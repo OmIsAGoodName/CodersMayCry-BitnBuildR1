@@ -181,11 +181,18 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
             localStorage.setItem('vendora_org_members_' + activeOrgId, JSON.stringify(mapped));
           } catch {}
 
-          if (!currentMemberId || !mapped.some((m) => m.id === currentMemberId)) {
-            setCurrentMemberId(mapped[0].id);
-            try {
-              localStorage.setItem('vendora_active_member_' + activeOrgId, mapped[0].id);
-            } catch {}
+          if (currentUser) {
+            const matching = mapped.find((m) =>
+              m.email?.toLowerCase().startsWith(currentUser.username.toLowerCase() + '@') ||
+              m.name.toLowerCase() === currentUser.fullName.toLowerCase() ||
+              m.id === currentUser.id
+            );
+            if (matching) {
+              setCurrentMemberId(matching.id);
+              try {
+                localStorage.setItem('vendora_active_member_' + activeOrgId, matching.id);
+              } catch {}
+            }
           }
         }
       } catch (err) {
@@ -206,16 +213,17 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
     currency: 'INR'
   } : null);
 
-  const currentMember = members.find((m) => m.id === currentMemberId) || (currentUser ? {
+  // Authenticated user is the absolute authority for identity and permissions
+  const currentMember: OrgMemberProfile | null = currentUser ? {
     id: currentUser.id,
     name: currentUser.fullName,
-    role: currentUser.role,
-    avatarInitials: currentUser.fullName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'OW',
+    role: currentUser.role, // STRICTLY LOCKED TO AUTHENTICATED USER'S ASSIGNED ROLE
+    avatarInitials: currentUser.fullName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'EM',
     email: `${currentUser.username}@vendora.store`
-  } : null);
+  } : null;
 
   // Role permissions
-  const role = currentMember?.role || currentUser?.role || 'owner';
+  const role: UserRole = currentUser?.role || 'operator';
   const canManageSettings = role === 'owner';
   const canApproveOrders = role === 'owner' || role === 'manager';
   const canDeleteRecords = role === 'owner';
@@ -298,11 +306,8 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const switchMember = (memberId: string) => {
-    setCurrentMemberId(memberId);
-    try {
-      localStorage.setItem('vendora_active_member_' + activeOrgId, memberId);
-    } catch {}
+  const switchMember = (_memberId: string) => {
+    // Identity is strictly bound to the authenticated session; role switching is disabled for security
   };
 
   const addMember = async (name: string, role: UserRole, email?: string) => {
