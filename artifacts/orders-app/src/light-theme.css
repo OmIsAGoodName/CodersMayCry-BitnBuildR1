@@ -426,3 +426,29 @@ body.theme-light {
 [data-theme="light"] .setting-row .cell-muted {
   color: #64748b !important;
 }
+
+
+/* Light Theme Voice Desk & Listening States */
+[data-theme="light"] .voice-btn {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+[data-theme="light"] .voice-listening-banner {
+  background: rgba(239, 68, 68, 0.08) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+[data-theme="light"] .voice-listening-text {
+  color: #dc2626 !important;
+}
+[data-theme="light"] .voice-status-pill {
+  background: rgba(2, 132, 199, 0.08) !important;
+  border-color: rgba(2, 132, 199, 0.25) !important;
+  color: #0284c7 !important;
+}
+[data-theme="light"] .chip-hinglish {
+  color: #64748b !important;
+}
+[data-theme="light"] .chip.active .chip-hinglish {
+  color: #ffffff !important;
+}
