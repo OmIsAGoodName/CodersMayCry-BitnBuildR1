@@ -4,12 +4,12 @@ import { TeamManagementPage } from '@/pages/TeamManagementPage';
 import { supabase } from '@/lib/supabase';
 import { enqueueMutation, flushPendingMutations, pullCloudOrders, cloudToOrder, syncStoreOrders, orderToCloud, clearPendingMutation } from '@/lib/sync/offlineSyncManager';
 import { Users as UsersIcon } from 'lucide-react';
-import { type ReactNode, useEffect, useState, useTransition } from 'react';
+import { type ReactNode, useEffect, useState, useRef, useTransition } from 'react';
 import { Link, Route, Switch, useLocation } from 'wouter';
 import {
   Sun, Moon, AlertTriangle, ArrowRight, BarChart3, CalendarDays, Check, CheckCircle2, ClipboardList,
   CloudOff, CloudUpload, Database, Download, FileJson, Filter, Home, Inbox, IndianRupee,
-  Layers3, MoreHorizontal, Plus, RefreshCw, RotateCcw, Search, Settings as SettingsIcon,
+  Layers3, MoreHorizontal, Plus, RefreshCw, RotateCcw, Search, Mic, MicOff, Settings as SettingsIcon,
   Sparkles, Trash2, Upload, Wifi, WifiOff, X, Zap, Cpu, Play, Key, SlidersHorizontal, Copy, User,
   Menu, ArrowLeft, LogOut
 } from 'lucide-react';
@@ -28,7 +28,7 @@ import {
   hasCustomApiKey, resetToManagedApiKey
 } from '@/lib/parser/hybridParser';
 import { parseUniversalMessage } from '@/lib/parser/universalParser';
-import { QueryDesk } from '@/components/QueryDesk';
+import { QueryDesk, transcribeAudioWithGemini } from '@/components/QueryDesk';
 import { StructuredJsonPage } from '@/pages/StructuredJsonPage';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { DayTracker, applyDayTheme } from '@/components/DayTracker';
@@ -886,6 +886,173 @@ function InboxPage({
   const [keyInput, setKeyInput] = useState('');
   const [showKeyModal, setShowKeyModal] = useState(false);
 
+  // Live Speech Recognition & Audio Intake
+  const [isListening, setIsListening] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState('');
+  const [speechState, setSpeechState] = useState<'idle' | 'listening' | 'sound_detected' | 'speech_detected'>('idle');
+  const [voiceStatus, setVoiceStatus] = useState<string>('');
+
+  const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const stopVoice = async () => {
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+      recognitionRef.current = null;
+    }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      const audioBlobPromise = new Promise<Blob>((resolve) => {
+        if (!mediaRecorderRef.current) return resolve(new Blob());
+        mediaRecorderRef.current.onstop = () => {
+          const blob = new Blob(audioChunksRef.current, { type: audioChunksRef.current[0]?.type || 'audio/webm' });
+          resolve(blob);
+        };
+      });
+
+      mediaRecorderRef.current.stop();
+      setVoiceStatus('Transcribing voice message with AI...');
+      const audioBlob = await audioBlobPromise;
+      const geminiKey = getSavedProviderKeys().gemini;
+      if (geminiKey && audioBlob.size > 800) {
+        try {
+          const transcribed = await transcribeAudioWithGemini(audioBlob, geminiKey);
+          if (transcribed) {
+            setMessage(transcribed);
+            setLiveTranscript(transcribed);
+            setVoiceStatus('Transcribed: "' + transcribed + '"');
+            onNotify('Voice message transcribed');
+            return;
+          }
+        } catch (gemErr) {
+          console.warn('Audio transcription failed:', gemErr);
+        }
+      }
+    }
+
+    setIsListening(false);
+    setSpeechState('idle');
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+
+    if (liveTranscript) {
+      setVoiceStatus('Transcribed: "' + liveTranscript + '"');
+      onNotify('Voice message captured');
+    } else {
+      setVoiceStatus('Voice intake complete.');
+    }
+  };
+
+  const toggleVoice = async () => {
+    if (typeof window === 'undefined') return;
+
+    if (isListening) {
+      await stopVoice();
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      try {
+        if (recognitionRef.current) {
+          try { recognitionRef.current.abort(); } catch {}
+          recognitionRef.current = null;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognitionRef.current = recognition;
+        recognition.lang = 'en-IN';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+
+        setIsListening(true);
+        setLiveTranscript('');
+        setSpeechState('listening');
+        setVoiceStatus('🎙️ Listening... Speak customer order (say "bhaiya 2 kurta navy blue parso chahiye")');
+
+        recognition.onaudiostart = () => { setSpeechState('listening'); };
+        recognition.onsoundstart = () => { setSpeechState('sound_detected'); };
+        recognition.onspeechstart = () => { setSpeechState('speech_detected'); };
+
+        recognition.onresult = (event: any) => {
+          let interim = '';
+          let final = '';
+          for (let i = 0; i < event.results.length; ++i) {
+            const transcript = event.results[i][0]?.transcript || '';
+            if (event.results[i].isFinal) {
+              final += (final ? ' ' : '') + transcript;
+            } else {
+              interim += (interim ? ' ' : '') + transcript;
+            }
+          }
+          const liveWords = final ? (interim ? (final + ' ' + interim) : final) : interim;
+          if (liveWords) {
+            setMessage(liveWords);
+            setLiveTranscript(liveWords);
+          }
+        };
+
+        recognition.onerror = (event: any) => {
+          console.warn('SpeechRecognition error:', event.error);
+          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            setIsListening(false);
+            setVoiceStatus('⚠️ Microphone permission blocked. Allow mic in browser settings.');
+          } else if (event.error === 'network') {
+            setIsListening(false);
+            setVoiceStatus('⚠️ Speech connection timeout. Tap mic to retry.');
+          }
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+          setSpeechState('idle');
+        };
+
+        recognition.start();
+        return;
+      } catch (recErr) {
+        console.warn('SpeechRecognition start failed, fallback to media recorder:', recErr);
+      }
+    }
+
+    try {
+      setIsListening(true);
+      setLiveTranscript('');
+      setVoiceStatus('Recording audio query via microphone...');
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      audioChunksRef.current = [];
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      recorder.start(250);
+    } catch (err: any) {
+      setIsListening(false);
+      setVoiceStatus('⚠️ Could not access microphone. Please check browser permissions.');
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch {}
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, []);
+
   const activeModel = AVAILABLE_MODELS.find((m) => m.id === selectedModelId) || AVAILABLE_MODELS[0];
   const activeKey = providerKeys[activeModel.provider] || '';
 
@@ -1151,23 +1318,84 @@ function InboxPage({
           <div className="panel-head">
             <div>
               <h2>Paste Customer Message</h2>
-              <span className="minor">WhatsApp / SMS / Free Text</span>
+              <span className="minor">WhatsApp / SMS / Free Text / Live Voice</span>
             </div>
-            <button className="icon-btn" onClick={() => setMessage('')} aria-label="Clear" data-testid="button-clear-msg">
-              <X />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button
+                type="button"
+                className={`voice-btn ${isListening ? 'listening' : ''}`}
+                onClick={toggleVoice}
+                title={isListening ? 'Live speech recording active... Tap to stop' : 'Live Voice Input (Google Keyboard style)'}
+                data-testid="button-voice-inbox"
+                style={{ position: 'relative', right: 'auto', width: 32, height: 32 }}
+              >
+                {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+              </button>
+              <button className="icon-btn" onClick={() => { setMessage(''); setLiveTranscript(''); setVoiceStatus(''); }} aria-label="Clear" data-testid="button-clear-msg">
+                <X />
+              </button>
+            </div>
           </div>
 
           <div style={{ padding: '0 22px 22px' }}>
+            {/* Live Speech Recognition Banner */}
+            {isListening && (
+              <div className="voice-listening-banner" style={{ marginBottom: 12 }}>
+                <div className="voice-wave-bars">
+                  <span className="wave-bar" />
+                  <span className="wave-bar" />
+                  <span className="wave-bar" />
+                  <span className="wave-bar" />
+                  <span className="wave-bar" />
+                </div>
+                <div className="voice-live-wrap">
+                  <div className="voice-live-badge">
+                    {speechState === 'speech_detected' ? '🗣️ LIVE TRANSCRIBING' : speechState === 'sound_detected' ? '🔊 HEARING AUDIO' : '🎙️ LISTENING'}
+                  </div>
+                  <div className="voice-live-text">
+                    {liveTranscript ? (
+                      <>
+                        <strong>"{liveTranscript}"</strong>
+                        <span className="voice-cursor">|</span>
+                      </>
+                    ) : (
+                      <em>Speak customer order (say e.g. "bhaiya 2 chocolate cake parso chahiye")...</em>
+                    )}
+                  </div>
+                </div>
+                <button type="button" className="voice-stop-btn" onClick={stopVoice}>
+                  Done ✓
+                </button>
+              </div>
+            )}
+
+            {/* Voice Status pill if any */}
+            {voiceStatus && !isListening && (
+              <div className="voice-status-pill" style={{ marginBottom: 12 }}>
+                <span>{voiceStatus}</span>
+                <button type="button" onClick={() => setVoiceStatus('')} title="Dismiss">✕</button>
+              </div>
+            )}
+
             <textarea
               className="input message-box"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="e.g. “bhaiya main Ramesh. 2 kurta chahiye navy blue, chest 40, parso tak ho jayega kya? total ₹1850”"
+              placeholder="e.g. “bhaiya main Ramesh. 2 kurta chahiye navy blue, chest 40, parso tak ho jayega kya? total ₹1850” or click the mic to speak live"
               data-testid="textarea-raw-message"
             />
 
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+              <button
+                type="button"
+                className={`btn ${isListening ? 'btn-primary' : 'btn-quiet'}`}
+                style={{ padding: '4px 8px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                onClick={toggleVoice}
+                data-testid="button-speak-order-chip"
+              >
+                <Mic size={12} />
+                {isListening ? 'Listening…' : 'Speak Order 🎙️'}
+              </button>
               <span style={{ fontSize: 11, font: '10px var(--app-font-mono)', color: 'hsl(var(--muted-foreground))', alignSelf: 'center' }}>Try sample:</span>
               {sampleMessages.map((sample, idx) => (
                 <button

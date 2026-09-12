@@ -27,7 +27,7 @@ function money(value: number): string {
   return `\u20B9${value.toLocaleString('en-IN')}`;
 }
 
-async function transcribeAudioWithGemini(audioBlob: Blob, apiKey: string): Promise<string> {
+export async function transcribeAudioWithGemini(audioBlob: Blob, apiKey: string): Promise<string> {
   const reader = new FileReader();
   const base64Promise = new Promise<string>((resolve, reject) => {
     reader.onloadend = () => {
