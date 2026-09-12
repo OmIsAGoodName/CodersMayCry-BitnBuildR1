@@ -148,14 +148,21 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: #E63946;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent !important;
+  border: none !important;
   display: grid;
   place-items: center;
   color: #fff;
   font-weight: 800;
   font-size: 17px;
   font-family: var(--app-font-sans);
+  /* Dark mode default: subtle cyan/blue ambient glow */
+  filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.45)) drop-shadow(0 0 2px rgba(0, 240, 255, 0.6));
+  transition: filter 0.25s ease, transform 0.2s ease;
+}
+.brand-mark:hover {
+  filter: drop-shadow(0 0 14px rgba(0, 240, 255, 0.75)) drop-shadow(0 0 3px rgba(0, 240, 255, 0.9));
+  transform: scale(1.04);
 }
 .brand-name { font-family: var(--app-font-serif); font-size: 21px; letter-spacing: -0.04em; color: #fff; line-height: 1.1; }
 .brand-sub { display: block; font: 10px var(--app-font-mono); color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
@@ -1095,6 +1102,7 @@ h3 { font-size: 15px; color: #fff; }
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  background: transparent !important;
   border-radius: 8px;
 }
 
@@ -1159,7 +1167,7 @@ h3 { font-size: 15px; color: #fff; }
   left: -3px;
   right: -3px;
   height: 5px;
-  background: rgba(255, 0, 85, 0.5);
+  background: rgba(0, 240, 255, 0.4);
   box-shadow: 0 0 6px #00f0ff;
   mix-blend-mode: color-dodge;
   pointer-events: none;

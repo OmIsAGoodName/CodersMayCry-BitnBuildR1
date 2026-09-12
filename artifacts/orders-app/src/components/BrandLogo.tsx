@@ -50,22 +50,24 @@ export function BrandLogo() {
       title="Vendora Core · Miles Morales Glitch"
     >
       <img
-        src="/vendora-logo.jpg"
+        src="/vendora-logo.png"
         alt="Vendora Logo"
         className="brand-mark"
-        style={{ objectFit: 'cover' }}
+        style={{ objectFit: 'contain' }}
       />
       {/* Spider-Verse Chromatic Aberration & Slice Ghost Layers */}
       <img
-        src="/vendora-logo.jpg"
+        src="/vendora-logo.png"
         alt=""
         className="glitch-layer layer-red"
+        style={{ objectFit: 'contain' }}
         aria-hidden="true"
       />
       <img
-        src="/vendora-logo.jpg"
+        src="/vendora-logo.png"
         alt=""
         className="glitch-layer layer-cyan"
+        style={{ objectFit: 'contain' }}
         aria-hidden="true"
       />
       <div className="glitch-slice" aria-hidden="true" />
