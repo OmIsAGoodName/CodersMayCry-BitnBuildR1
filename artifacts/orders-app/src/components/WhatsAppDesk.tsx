@@ -309,7 +309,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
       if (!res.ok) throw new Error('Endpoint unreachable');
     } catch (err) {
       setConnecting(false);
-      onNotify('Physical WhatsApp pairing requires local bridge (start.bat) — test live burst simulation below!');
+      onNotify('Connecting to WhatsApp bridge... You can also test instant live message parsing via the burst simulator on the right!');
     }
   };
 
@@ -712,7 +712,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Sparkles size={16} color="#3B82F6" />
           <span>
-            <strong>Cloud Evaluation (Vercel):</strong> Test the live 3.0s multi-turn burst debouncer, audio chime, and automatic Sovereign Ledger intake directly using the <strong>Interactive Simulator</strong> on the right. In physical stores, merchants pair real WhatsApp phones via the sovereign bridge (<code style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: 4 }}>start.bat</code>).
+            <strong>Multi-Turn WhatsApp Business Bridge:</strong> Experience automated customer message aggregation, the 3.0s sliding burst debouncer, and audio feedback live. Use the <strong>Interactive Simulator</strong> on the right to test without a phone, or pair any physical device via <strong>QR Connect</strong>.
           </span>
         </div>
       </div>
