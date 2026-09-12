@@ -32,7 +32,7 @@ import {
 import { parseUniversalMessage } from '@/lib/parser/universalParser';
 import { QueryDesk } from '@/components/QueryDesk';
 import { transcribeAudio, getSupportedAudioMimeType, setupAudioAnalyser, isOperaOrNonChrome } from '@/lib/speech/audioTranscriber';
-import { StructuredJsonPage } from '@/pages/StructuredJsonPage';
+
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { DayTracker, applyDayTheme } from '@/components/DayTracker';
 import { BrandLogo } from '@/components/BrandLogo';
@@ -152,7 +152,6 @@ function AppShell({ children, settings, online, pendingSyncCount }: { children: 
     { href: '/orders', label: 'Ledger', icon: ClipboardList },
     { href: '/inbox', label: 'Universal Inbox', icon: Inbox },
     { href: '/employees', label: 'Employees', icon: UsersIcon },
-    { href: '/structured-json', label: 'Structured JSON', icon: FileJson },
     { href: '/query', label: 'Query Desk', icon: BarChart3 },
     { href: '/sync', label: 'CRDT Sync & Sim', icon: CloudUpload },
     { href: '/settings', label: 'Settings', icon: SettingsIcon },
@@ -2515,9 +2514,6 @@ function App() {
         </Route>
         <Route path="/inbox">
           <InboxPage onSave={saveOrder} onNotify={notify} />
-        </Route>
-        <Route path="/structured-json">
-          <StructuredJsonPage onSaveOrder={saveOrder} onNotify={notify} />
         </Route>
         <Route path="/employees">
           <EmployeesPage />
