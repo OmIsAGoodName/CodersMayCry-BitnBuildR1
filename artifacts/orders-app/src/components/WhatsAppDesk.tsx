@@ -263,7 +263,11 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
         .then((data) => {
           if (data && data.status) {
             setStatus((prev) => {
-              if (prev.qrRaw !== data.qrRaw || prev.status !== data.status) {
+              // Prevent momentary 'connecting' or spurious 'qr_ready' from flickering if already connected
+              if (prev.status === 'connected' && data.status === 'connecting') {
+                return prev;
+              }
+              if (prev.qrRaw !== data.qrRaw || prev.status !== data.status || prev.connectedNumber !== data.connectedNumber) {
                 return { ...prev, ...data };
               }
               return prev;
@@ -271,7 +275,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
           }
         })
         .catch(() => {});
-    }, 3000);
+    }, 2500);
 
     return () => {
       clearInterval(pollInterval);

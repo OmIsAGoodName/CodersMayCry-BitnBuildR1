@@ -217,7 +217,17 @@ export class WhatsAppBridgeService extends EventEmitter {
   }
 
   async start() {
-    if (this.sock && this.status === 'connected') return;
+    if (this.sock) {
+      try {
+        this.sock.ev.removeAllListeners('connection.update');
+        this.sock.ev.removeAllListeners('creds.update');
+        this.sock.ev.removeAllListeners('messages.upsert');
+        this.sock.end(undefined);
+      } catch (e) {
+        console.debug('Cleaned old socket:', e);
+      }
+      this.sock = null;
+    }
     try {
       this.status = 'connecting';
       this.emit('status', this.getStatus());
@@ -261,21 +271,26 @@ export class WhatsAppBridgeService extends EventEmitter {
         }
 
         if (connection === 'close') {
-          const isLoggedOut = (lastDisconnect?.error)?.output?.statusCode === DisconnectReason.loggedOut;
-          this.status = 'disconnected';
-          this.qrCodeRaw = null;
-          this.qrCodeDataUrl = null;
-          this.connectedNumber = null;
-          this.connectedName = null;
-          this.emit('status', this.getStatus());
+          const statusCode = (lastDisconnect?.error)?.output?.statusCode;
+          const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+          console.log(`[WA-Bridge] Connection closed. Code: ${statusCode}, LoggedOut: ${isLoggedOut}`);
 
           if (isLoggedOut) {
+            this.status = 'disconnected';
+            this.qrCodeRaw = null;
+            this.qrCodeDataUrl = null;
+            this.connectedNumber = null;
+            this.connectedName = null;
+            this.emit('status', this.getStatus());
             try {
               if (fs.existsSync(this.authFolder)) fs.rmSync(this.authFolder, { recursive: true, force: true });
             } catch {}
-            setTimeout(() => this.start(), 2000);
+            setTimeout(() => this.start(), 1500);
           } else {
-            setTimeout(() => this.start(), 2500);
+            // For restartRequired (515) or transient network drops, keep credentials and reconnect seamlessly
+            this.status = 'connecting';
+            this.emit('status', this.getStatus());
+            setTimeout(() => this.start(), 1000);
           }
         } else if (connection === 'open') {
           this.status = 'connected';
@@ -284,6 +299,7 @@ export class WhatsAppBridgeService extends EventEmitter {
           const userJid = this.sock.user?.id || '';
           this.connectedNumber = userJid.split(':')[0] || userJid.split('@')[0];
           this.connectedName = this.sock.user?.name || 'WhatsApp Business User';
+          console.log(`[WA-Bridge] Active & Connected to ${this.connectedName} (+${this.connectedNumber})`);
           this.emit('status', this.getStatus());
         }
       });
