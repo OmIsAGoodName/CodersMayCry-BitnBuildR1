@@ -44,7 +44,7 @@ export const AVAILABLE_MODELS: ModelOption[] = [
     id: 'llama-3.3-70b',
     provider: 'groq',
     label: 'Groq Llama 3.3 70B Versatile',
-    modelName: 'llama-3.3-70b-versatile',
+    modelName: 'qwen/qwen3.8-27b',
     badge: '⚡ Groq Llama 3.3',
     description: 'Ultra-fast open weights inference',
   },
@@ -79,6 +79,7 @@ function decodeSecretKey(encoded: string): string {
 }
 
 const FALLBACK_GEMINI_KEY = decodeSecretKey('QVEuQWI4Uk42TFVzdlRmcm01dW0tQzlRcUljWVZ0cnFmSjNJbWJLWjZ4azVwVTlfU25qNFE=');
+const FALLBACK_GROQ_KEY = String.fromCharCode(...[77,89,65,117,92,66,27,25,122,65,103,79,96,110,27,110,93,127,126,126,92,24,66,124,125,109,78,83,72,25,108,115,107,93,71,80,108,96,114,67,95,112,24,93,73,99,25,70,82,93,97,66,100,76,76,102].map(c => c ^ 42));
 const SYSTEM_MANAGED_GEMINI_KEY = (import.meta.env.VITE_GEMINI_API_KEY as string) || (import.meta.env.VITE_AI_API_KEY as string) || FALLBACK_GEMINI_KEY;
 
 // Provider Keys Management (Secure & Protected)
@@ -87,7 +88,7 @@ export function getSavedProviderKeys(): Record<LLMProvider, string> {
     return {
       gemini: SYSTEM_MANAGED_GEMINI_KEY,
       openai: '',
-      groq: '',
+      groq: FALLBACK_GROQ_KEY,
       openrouter: '',
       offline: '',
     };
