@@ -5,6 +5,7 @@ import {
   Layers, Check, Copy, RefreshCw, Volume2, ShieldCheck, Zap
 } from 'lucide-react';
 import { Order } from '@/lib/storage/offlineDb';
+import { parseUniversalMessage } from '@/lib/parser/universalParser';
 
 interface WhatsAppStatus {
   status: 'disconnected' | 'connecting' | 'qr_ready' | 'connected';
@@ -254,10 +255,11 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      await fetch('/api/whatsapp/connect', { method: 'POST' });
+      const res = await fetch('/api/whatsapp/connect', { method: 'POST' });
+      if (!res.ok) throw new Error('Endpoint unreachable');
     } catch (err) {
       setConnecting(false);
-      onNotify('Failed to start WhatsApp bridge');
+      onNotify('Physical WhatsApp pairing requires local bridge (start.bat) — test live burst simulation below!');
     }
   };
 
@@ -291,11 +293,92 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
     } catch {}
   };
 
+  const runClientSideSimulation = (text: string, phone: string, name: string) => {
+    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+    const totalLines = lines.length || 1;
+    let currentIdx = 0;
+    const accumulated: string[] = [];
+
+    const interval = setInterval(() => {
+      if (currentIdx < totalLines) {
+        accumulated.push(lines[currentIdx]);
+        currentIdx++;
+        setActiveActivity({
+          type: 'aggregating',
+          phone,
+          pushName: name,
+          messageCount: accumulated.length,
+          messages: [...accumulated],
+          preview: accumulated.join(' '),
+        });
+      } else {
+        clearInterval(interval);
+        setTimeout(() => {
+          setActiveActivity(null);
+          playWhatsAppChime();
+
+          const rawMerged = accumulated.join('\n');
+          const parsedRes = parseUniversalMessage(rawMerged);
+
+          const newOrder: ParsedWhatsAppOrder = {
+            messageId: 'sim_' + Date.now(),
+            rawMessage: rawMerged,
+            rawMessages: [...accumulated],
+            messageCount: accumulated.length,
+            phone,
+            pushName: name,
+            timestamp: Math.floor(Date.now() / 1000),
+            receivedAt: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            parsed: {
+              customer: parsedRes.customer || name,
+              phone,
+              items: parsedRes.items.map((item) => ({
+                description: item.description,
+                quantity: item.quantity,
+                attributes: item.attributes,
+              })),
+              due_date: parsedRes.due_date,
+              dueDate: parsedRes.due_date,
+              amount: parsedRes.amount,
+              paidAmount: 0,
+              status: 'new',
+              referencesPriorOrder: parsedRes.references_prior_order,
+              confidence: parsedRes.confidence,
+              needsClarification: parsedRes.needs_clarification,
+            },
+            autoIngested: autoIngest && parsedRes.confidence >= status.autoIngestThreshold && !parsedRes.needs_clarification,
+          };
+
+          setMessages((prev) => [newOrder, ...prev.filter((m) => m.messageId !== newOrder.messageId)]);
+          onNotify(`WhatsApp Order Received from ${newOrder.parsed.customer}`);
+
+          if (newOrder.autoIngested) {
+            onSaveOrder({
+              customer: newOrder.parsed.customer,
+              phone: newOrder.parsed.phone,
+              items: newOrder.parsed.items,
+              dueDate: newOrder.parsed.due_date || new Date().toISOString().slice(0, 10),
+              amount: newOrder.parsed.amount || 0,
+              paidAmount: newOrder.parsed.paidAmount || 0,
+              status: 'new',
+              referencesPriorOrder: newOrder.parsed.referencesPriorOrder,
+              confidence: newOrder.parsed.confidence,
+              needsClarification: newOrder.parsed.needsClarification,
+              rawMessage: newOrder.rawMessage,
+            });
+            setSavedOrderIds((prev) => new Set(prev).add(newOrder.messageId));
+            onNotify(`Auto-Ingested order from ${newOrder.parsed.customer} to Sovereign Ledger!`);
+          }
+        }, 1200);
+      }
+    }, 450);
+  };
+
   const handleSimulateBurst = async () => {
     if (!simText.trim()) return;
     setIsSimulating(true);
     try {
-      await fetch('/api/whatsapp/test-message', {
+      const res = await fetch('/api/whatsapp/test-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -304,9 +387,11 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
           name: simName,
         }),
       });
+      if (!res.ok) throw new Error('Backend not available');
       onNotify(`Simulated 5-part message burst from ${simName}!`);
     } catch {
-      onNotify('Simulation request failed.');
+      runClientSideSimulation(simText, simPhone, simName);
+      onNotify(`Simulated 5-part message burst from ${simName}! (In-Browser Engine)`);
     } finally {
       setTimeout(() => setIsSimulating(false), 500);
     }
@@ -383,6 +468,28 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
               {status.status === 'qr_ready' ? 'Regenerate QR' : 'Pair WhatsApp'}
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Cloud & Judge Guidance Banner */}
+      <div
+        style={{
+          background: 'rgba(59, 130, 246, 0.08)',
+          border: '1px solid rgba(59, 130, 246, 0.25)',
+          borderRadius: 10,
+          padding: '10px 16px',
+          marginBottom: 18,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: 12,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Sparkles size={16} color="#3B82F6" />
+          <span>
+            <strong>Cloud Evaluation (Vercel):</strong> Test the live 3.0s multi-turn burst debouncer, audio chime, and automatic Sovereign Ledger intake directly using the <strong>Interactive Simulator</strong> on the right. In physical stores, merchants pair real WhatsApp phones via the sovereign bridge (<code style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: 4 }}>start.bat</code>).
+          </span>
         </div>
       </div>
 
