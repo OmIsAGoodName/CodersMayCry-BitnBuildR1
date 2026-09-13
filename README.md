@@ -1,7 +1,21 @@
 # Vendora — Sovereign Offline-First Commerce & Order Ledger for Bharat
 > **Bit N Build Hackathon 2026** · **Track 3: Jan Jeevan (Technology for Everyday Life & Real-World Indian Challenges)**  
 > **Team**: CodersMayCry  
-> 🌐 **Live Cloud Deployment**: [https://vendora-bridge.onrender.com](https://vendora-bridge.onrender.com)
+> 🌐 **Live Cloud Deployment**: [https://vendora-bridge.onrender.com](https://vendora-bridge.onrender.com)  
+> 🏆 **Judges / Evaluators**: Please refer to [**Guide for Judges**](GUIDE_FOR_JUDGES.md) for a brief guide, evaluation checklist, and demo credentials (`cookie` / `1111`).
+
+---
+
+## 👨‍⚖️ Guide for Judges & Quick Evaluation
+
+Judges can see [**Guide for Judges**](GUIDE_FOR_JUDGES.md) for a brief evaluation walkthrough, architecture breakdown, and testing checklist:
+- 🚀 **Live Web App**: [https://coders-may-cry-bitn-build-r1-api-se.vercel.app](https://coders-may-cry-bitn-build-r1-api-se.vercel.app)
+- ⚡ **WhatsApp Cloud Bridge**: [https://vendora-bridge.onrender.com](https://vendora-bridge.onrender.com)
+- 🔑 **Demo Login Credentials**:
+  - **Username**: `cookie`
+  - **Password**: `1111`
+  *(Note: Vendora also operates 100% locally with zero login required!)*
+- 📖 **Full Evaluation Checklist**: See [**Guide for Judges**](GUIDE_FOR_JUDGES.md)
 
 ---
 
