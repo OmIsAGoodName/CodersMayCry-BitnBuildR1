@@ -1,3 +1,43 @@
+
+export function formatWhatsAppPhone(rawPhone, rawMessage) {
+  if (rawMessage) {
+    const textMatch = rawMessage.match(/(?:(?:\+?91[-\s]?)?([6-9]\d{9}))\b/);
+    if (textMatch && textMatch[1]) {
+      const num = textMatch[1];
+      return `+91 ${num.slice(0, 5)} ${num.slice(5)}`;
+    }
+  }
+
+  if (!rawPhone || !String(rawPhone).trim()) {
+    return '+91 (WhatsApp)';
+  }
+
+  const cleaned = String(rawPhone).trim();
+  const digits = cleaned.replace(/\D/g, '');
+
+  if (digits.length === 10 && /^[6-9]/.test(digits)) {
+    return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+  }
+
+  if (digits.length === 12 && digits.startsWith('91') && /^[6-9]/.test(digits.slice(2))) {
+    return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
+  }
+
+  if (digits.length === 11 && digits.startsWith('0') && /^[6-9]/.test(digits.slice(1))) {
+    return `+91 ${digits.slice(1, 6)} ${digits.slice(6)}`;
+  }
+
+  if (digits.length > 12 && !digits.startsWith('91')) {
+    return `+91 ${digits.slice(0, 4)}...${digits.slice(-4)}`;
+  }
+
+  if (digits.length >= 7 && digits.length <= 13) {
+    return `+${digits}`;
+  }
+
+  return cleaned.startsWith('+') ? cleaned : `+${cleaned}`;
+}
+
 import path from 'node:path';
 import fs from 'node:fs';
 import { EventEmitter } from 'node:events';
@@ -576,7 +616,13 @@ export class WhatsAppBridgeService extends EventEmitter {
           if (!messageText.trim()) continue;
 
           // 2. Extract unique 1-on-1 human phone number
-          const senderPhone = senderJid.split('@')[0].split(':')[0];
+          let senderPhone = senderJid.split('@')[0].split(':')[0];
+          if (senderJid.endsWith('@lid') || senderPhone.length > 13) {
+            const partJid = msg.key?.participant || msg.participant || '';
+            if (partJid && partJid.includes('@s.whatsapp.net')) {
+              senderPhone = partJid.split('@')[0].split(':')[0];
+            }
+          }
           if (!senderPhone || senderPhone.length < 8) continue;
 
           // 3. AI Privacy Guard & Keyword Gate
@@ -608,7 +654,7 @@ export class WhatsAppBridgeService extends EventEmitter {
           this.queueIncomingMessage({
             id: msg.key.id || `msg_${Date.now()}`,
             text: cleanText,
-            phone: `+${senderPhone}`,
+            phone: formatWhatsAppPhone(senderPhone, messageText),
             rawPhone: senderPhone,
             senderJid,
             pushName,
@@ -688,18 +734,19 @@ export class WhatsAppBridgeService extends EventEmitter {
       parserUsed = 'Sovereign Local Engine';
     }
 
+    const resolvedPhone = formatWhatsAppPhone(parsed.phone || buffer.phone, combinedText);
     const orderPayload = {
       messageId: buffer.messages[0].id,
       rawMessage: combinedText,
       rawMessages: buffer.messages.map((m) => m.text),
       messageCount: buffer.messages.length,
-      phone: buffer.phone,
+      phone: resolvedPhone,
       pushName: buffer.pushName,
       timestamp: buffer.lastTimestamp,
       receivedAt: new Date(buffer.lastTimestamp).toISOString(),
       parsed: {
         customer: parsed.customer || buffer.pushName || 'WhatsApp Customer',
-        phone: buffer.phone,
+        phone: resolvedPhone,
         items: (parsed.items || []).map((item) => typeof item === 'string' ? { description: item, quantity: 1, attributes: {} } : item),
         due_date: parsed.due_date || parsed.dueDate || null,
         dueDate: parsed.due_date || parsed.dueDate || null,

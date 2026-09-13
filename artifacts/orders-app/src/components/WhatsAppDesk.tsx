@@ -1,3 +1,4 @@
+import { formatWhatsAppPhone } from '@/lib/utils';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   MessageSquare, QrCode, Wifi, WifiOff, CheckCircle2, AlertTriangle,
@@ -109,25 +110,25 @@ function playWhatsAppChime() {
 const PRESET_SIMULATIONS = [
   {
     label: 'Grocery & Olive Oil (Sarah)',
-    phone: '+919833445566',
+    phone: '+91 98334 45566',
     name: 'Sarah',
     text: 'Order: This is Sarah. Need 1 pack of Earl Grey tea bags and 3 bottles of olive oil delivered by 5 PM.',
   },
   {
     label: 'Cafe & Beverage (Mario Balotelli)',
-    phone: '+919877112233',
+    phone: '+91 98771 12233',
     name: 'Mario Balotelli',
     text: "Order: This is Mario Balotelli. Need 1 pack of Coffee and 3 Cococola delivered by 5 PM. I'll pay u 250rs",
   },
   {
     label: 'Tailoring Burst (Ramesh)',
-    phone: '+919820123456',
+    phone: '+91 98201 23456',
     name: 'Ramesh Kumar',
     text: 'Order: Bhaiya Ramesh here\n2 kurta urgently chahiye\nchest 40, navy blue\n15 tarikh tak de dena\nadvance ₹1800 gpay kiya',
   },
   {
     label: 'Bakery Order (Priya)',
-    phone: '+919876543210',
+    phone: '+91 98765 43210',
     name: 'Priya Sharma',
     text: 'Order: main Priya bol rahi hu\nkal dopahar 1 baje 3 veg lunch thali aur 1kg chocolate cake chahiye\nwrite Happy Birthday Aryan\n720 rupaye bhej diye',
   },
@@ -487,6 +488,9 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
         es.addEventListener('message', (e) => {
           try {
             const order: ParsedWhatsAppOrder = JSON.parse(e.data);
+            const cleanPhone = formatWhatsAppPhone(order.parsed?.phone || order.phone, order.rawMessage);
+            order.phone = cleanPhone;
+            if (order.parsed) order.parsed.phone = cleanPhone;
             setActiveActivity(null);
             playWhatsAppChime();
 
@@ -498,7 +502,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
             if (autoIngest && order.parsed.confidence >= (status.autoIngestThreshold || 0.80) && !order.parsed.needsClarification) {
               onSaveOrder({
                 customer: order.parsed.customer,
-                phone: order.parsed.phone,
+                phone: cleanPhone,
                 items: order.parsed.items,
                 dueDate: order.parsed.due_date || new Date().toISOString().slice(0, 10),
                 amount: order.parsed.amount || 0,
@@ -663,18 +667,19 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
             parserBadge = 'Sovereign Local Engine';
           }
 
+          const cleanSimPhone = formatWhatsAppPhone(parsedRes.phone || phone, rawMerged);
           const newOrder: ParsedWhatsAppOrder = {
             messageId: 'sim_' + Date.now(),
             rawMessage: rawMerged,
             rawMessages: [...accumulated],
             messageCount: accumulated.length,
-            phone,
+            phone: cleanSimPhone,
             pushName: name,
             timestamp: Math.floor(Date.now() / 1000),
             receivedAt: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
             parsed: {
               customer: parsedRes.customer || name,
-              phone,
+              phone: cleanSimPhone,
               items: (parsedRes.items || []).map((item: any) => ({
                 description: item.description,
                 quantity: item.quantity,
@@ -699,7 +704,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
           if (newOrder.autoIngested) {
             onSaveOrder({
               customer: newOrder.parsed.customer,
-              phone: newOrder.parsed.phone,
+              phone: cleanSimPhone,
               items: newOrder.parsed.items,
               dueDate: newOrder.parsed.due_date || new Date().toISOString().slice(0, 10),
               amount: newOrder.parsed.amount || 0,
@@ -764,7 +769,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
   const handleSaveSingleOrder = (item: ParsedWhatsAppOrder) => {
     onSaveOrder({
       customer: item.parsed.customer,
-      phone: item.parsed.phone,
+      phone: formatWhatsAppPhone(item.parsed.phone || item.phone, item.rawMessage),
       items: item.parsed.items,
       dueDate: item.parsed.due_date || new Date().toISOString().slice(0, 10),
       amount: item.parsed.amount || 0,
@@ -1237,7 +1242,7 @@ export function WhatsAppDesk({ onSaveOrder, onNotify }: WhatsAppDeskProps) {
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                               <strong style={{ fontSize: 15 }}>{msg.parsed.customer}</strong>
-                              <span style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>{msg.phone}</span>
+                              <span style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>{formatWhatsAppPhone(msg.phone || msg.parsed?.phone, msg.rawMessage)}</span>
                               <span style={{ fontSize: 10, background: 'hsl(var(--secondary)/.2)', color: 'hsl(var(--secondary))', padding: '2px 7px', borderRadius: 6, fontWeight: 700 }}>
                                 {msg.messageCount} msgs merged
                               </span>

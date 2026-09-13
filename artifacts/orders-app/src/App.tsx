@@ -1,3 +1,4 @@
+import { formatWhatsAppPhone } from '@/lib/utils';
 import { OrgAuthProvider, useOrgAuth } from '@/context/OrgAuthContext';
 import { OrgHeader } from '@/components/OrgHeader';
 import { TeamManagementPage } from '@/pages/TeamManagementPage';
@@ -941,7 +942,7 @@ function OrdersPage({
                   <span className="order-avatar">{initials(o.customer)}</span>
                   <div>
                     <strong>{o.customer || 'Unnamed'}</strong>
-                    <small>{o.phone || 'No phone'}</small>
+                    <small>{formatWhatsAppPhone(o.phone, o.rawMessage) || 'No phone'}</small>
                   </div>
                 </span>
                 <span className="cell-muted">{itemText(o)}</span>
@@ -1300,7 +1301,7 @@ function InboxPage({
     if (!parsed) return;
     onSave({
       customer: parsed.customer || '',
-      phone: '',
+      phone: formatWhatsAppPhone(parsed.phone, message),
       items: parsed.items,
       dueDate: parsed.due_date || dateOffset(1),
       amount: parsed.amount || 0,

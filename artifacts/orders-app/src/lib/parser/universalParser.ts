@@ -8,6 +8,7 @@ import { NUMBER_WORDS, COLOR_WORDS, FABRIC_WORDS, DOMAIN_KEYWORDS, PRIOR_ORDER_P
 
 export interface StandardParsedOrder {
   customer: string | null;
+  phone?: string | null;
   items: Array<{
     description: string;
     quantity: number;
@@ -43,6 +44,7 @@ const NON_NAME_WORDS = new Set([
 function cleanCandidateName(raw: string): string {
   return raw
     .replace(/[.,:;!?\n\r"']/g, ' ')
+    .replace(/\b(?:\+?91[-\s]?)?[6-9]\d{9}\b/g, '')
     .replace(/\b(bhaiya|uncle|didi|sir|madam|ji|namaste|hello|hi|order|chahiye|bol|rahi|raha|hu|hai|kardo|karna|here|calling|baat|se)\b/gi, '')
     .trim();
 }
@@ -256,6 +258,9 @@ export function parseUniversalMessage(rawMessage: string, referenceDate: Date = 
   const attributes = extractAttributes(norm);
   const description = extractDescription(norm);
 
+  const phoneMatch = norm.match(/(?:(?:\+?91[-\s]?)?([6-9]\d{9}))\b/);
+  const phone = phoneMatch ? `+91 ${phoneMatch[1].slice(0, 5)} ${phoneMatch[1].slice(5)}` : null;
+
   // Ambiguity Detection
   const isVague =
     /^(hi|hello|namaste|bhaiya|uncle|call karo|rate batao|urgent)\s*[.!?]*$/i.test(lower) ||
@@ -276,6 +281,7 @@ export function parseUniversalMessage(rawMessage: string, referenceDate: Date = 
 
   return {
     customer,
+    phone,
     items: [
       {
         description,

@@ -50,6 +50,18 @@ export const AVAILABLE_MODELS: ModelOption[] = [
   },
 ];
 
+
+function extractPhoneFromText(text: string, candidatePhone?: unknown): string | null {
+  if (typeof candidatePhone === 'string' && candidatePhone.trim().length >= 8) {
+    const digits = candidatePhone.replace(/\D/g, '');
+    if (digits.length === 10) return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+    if (digits.length === 12 && digits.startsWith('91')) return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
+    return candidatePhone.trim();
+  }
+  const match = text.match(/(?:(?:\+?91[-\s]?)?([6-9]\d{9}))\b/);
+  return match ? `+91 ${match[1].slice(0, 5)} ${match[1].slice(5)}` : null;
+}
+
 export interface HybridParseResult extends StandardParsedOrder {
   _source: 'online_ai' | 'offline_nlp';
   _domain: string;
@@ -314,6 +326,7 @@ Return ONLY valid JSON matching this schema:
 
         const standardized: StandardParsedOrder = {
           customer: typeof parsed.customer === 'string' && parsed.customer.trim() ? parsed.customer.trim() : null,
+          phone: extractPhoneFromText(text, parsed.phone),
           items: Array.isArray(parsed.items) && parsed.items.length > 0
             ? parsed.items.map((it: Record<string, unknown>) => ({
                 description: String(it.description || 'Customer order'),
@@ -375,6 +388,7 @@ Return ONLY valid JSON matching this schema:
 
               const standardized: StandardParsedOrder = {
                 customer: typeof parsed.customer === 'string' && parsed.customer.trim() ? parsed.customer.trim() : null,
+          phone: extractPhoneFromText(text, parsed.phone),
                 items: Array.isArray(parsed.items) && parsed.items.length > 0
                   ? parsed.items.map((it: Record<string, unknown>) => ({
                       description: String(it.description || 'Customer order'),
@@ -445,6 +459,7 @@ Return ONLY valid JSON matching this schema:
 
           const standardized: StandardParsedOrder = {
             customer: typeof parsed.customer === 'string' && parsed.customer.trim() ? parsed.customer.trim() : null,
+          phone: extractPhoneFromText(text, parsed.phone),
             items: Array.isArray(parsed.items) && parsed.items.length > 0
               ? parsed.items.map((it: Record<string, unknown>) => ({
                   description: String(it.description || 'Customer order'),
