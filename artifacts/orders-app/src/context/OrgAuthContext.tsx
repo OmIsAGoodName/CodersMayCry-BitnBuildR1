@@ -299,6 +299,9 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.removeItem('vendora_active_org_id');
       localStorage.removeItem('vendora_current_user');
+      indexedDB.deleteDatabase('vendora_orders_db');
+      localStorage.removeItem('vendora-orders-v1');
+      localStorage.removeItem('vendora_pending_sync_queue');
     } catch {}
     window.location.reload();
   };
@@ -307,6 +310,9 @@ export function OrgAuthProvider({ children }: { children: ReactNode }) {
     setActiveOrgId(orgId);
     try {
       localStorage.setItem('vendora_active_org_id', orgId);
+      indexedDB.deleteDatabase('vendora_orders_db');
+      localStorage.removeItem('vendora-orders-v1');
+      localStorage.removeItem('vendora_pending_sync_queue');
     } catch {}
     window.location.reload();
   };

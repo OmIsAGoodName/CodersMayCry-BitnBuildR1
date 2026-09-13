@@ -1839,7 +1839,11 @@ function App() {
     applyDayTheme(new Date().getDay());
 
     OfflineStorage.init().then((data) => {
-      setOrders(data.orders);
+      const currentOrgId = localStorage.getItem('vendora_active_org_id');
+      const scopedOrders = currentOrgId
+        ? data.orders.filter((o) => !o.orgId || o.orgId === currentOrgId)
+        : data.orders;
+      setOrders(scopedOrders);
       setSettings(data.settings);
       setOplog(data.oplog);
       setConflicts(data.conflicts);
@@ -1879,7 +1883,7 @@ function App() {
     let isCurrent = true;
 
     syncStoreOrders(organization.id).then((merged) => {
-      if (isCurrent && merged && merged.length > 0) {
+      if (isCurrent && Array.isArray(merged)) {
         setOrders(merged);
       }
     });
@@ -1939,7 +1943,7 @@ function App() {
     const handleSync = () => {
       if (navigator.onLine && organization?.id) {
         syncStoreOrders(organization.id).then((merged) => {
-          if (merged && merged.length > 0) setOrders(merged);
+          if (Array.isArray(merged)) setOrders(merged);
         });
       }
     };
@@ -1971,6 +1975,7 @@ function App() {
         deviceId: settings.deviceId,
       }),
       ...payload,
+      orgId: organization?.id || (existing as any)?.orgId,
       updatedAt: now,
       version: (existing?.version || 0) + 1,
       deviceId: settings.deviceId,

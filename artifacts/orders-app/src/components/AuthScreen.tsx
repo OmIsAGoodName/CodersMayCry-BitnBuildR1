@@ -36,6 +36,11 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      indexedDB.deleteDatabase('vendora_orders_db');
+      localStorage.removeItem('vendora-orders-v1');
+      localStorage.removeItem('vendora_pending_sync_queue');
+    } catch {}
     if (!username.trim() || !password) {
       setError('Please fill in both your username and password.');
       return;
@@ -53,6 +58,11 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
 
   const handleOwnerRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      indexedDB.deleteDatabase('vendora_orders_db');
+      localStorage.removeItem('vendora-orders-v1');
+      localStorage.removeItem('vendora_pending_sync_queue');
+    } catch {}
     if (!username.trim() || !password || !fullName.trim() || !storeName.trim()) {
       setError('All fields are required to establish your store account.');
       return;
@@ -75,6 +85,11 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
 
   const handleEmployeeRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      indexedDB.deleteDatabase('vendora_orders_db');
+      localStorage.removeItem('vendora-orders-v1');
+      localStorage.removeItem('vendora_pending_sync_queue');
+    } catch {}
     if (!username.trim() || !password || !fullName.trim()) {
       setError('Please fill in full name, username, and password.');
       return;

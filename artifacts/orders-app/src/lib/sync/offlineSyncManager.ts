@@ -72,6 +72,7 @@ export function orderToCloud(order: Order, orgId: string, updatedBy = 'operator'
 export function cloudToOrder(cloud: any): Order {
   return {
     id: cloud.id,
+    orgId: cloud.org_id,
     customer: cloud.customer || '',
     phone: cloud.phone || '',
     amount: Number(cloud.amount) || 0,
@@ -170,7 +171,8 @@ export async function syncStoreOrders(orgId: string, localOrders?: Order[]): Pro
     if (!cloudOrders) return null;
 
     // 3. Merge cloud orders with local orders (conflict resolution by updatedAt / version)
-    const local = localOrders || OfflineStorage.getOrdersSync();
+    const allLocal = localOrders || OfflineStorage.getOrdersSync();
+    const local = allLocal.filter((lo) => lo.orgId === orgId);
     const mergedMap = new Map<string, Order>();
 
     // Put all cloud orders in map
