@@ -4,7 +4,7 @@ import { TeamManagementPage } from '@/pages/TeamManagementPage';
 import { EmployeesPage } from '@/pages/EmployeesPage';
 import { EmployeeLobbyModal } from '@/components/EmployeeLobbyModal';
 import { supabase } from '@/lib/supabase';
-import { enqueueMutation, flushPendingMutations, pullCloudOrders, cloudToOrder, syncStoreOrders, orderToCloud, clearPendingMutation } from '@/lib/sync/offlineSyncManager';
+import { enqueueMutation, flushPendingMutations, pullCloudOrders, cloudToOrder, syncStoreOrders, orderToCloud, clearPendingMutation, addTombstone, removeTombstone, getTombstones } from '@/lib/sync/offlineSyncManager';
 import { Users as UsersIcon } from 'lucide-react';
 import { type ReactNode, useEffect, useState, useRef, useTransition } from 'react';
 import { Link, Route, Switch, useLocation } from 'wouter';
@@ -1840,9 +1840,11 @@ function App() {
 
     OfflineStorage.init().then((data) => {
       const currentOrgId = localStorage.getItem('vendora_active_org_id');
-      const scopedOrders = currentOrgId
+      const tombstones = getTombstones();
+      const scopedOrders = (currentOrgId
         ? data.orders.filter((o) => !o.orgId || o.orgId === currentOrgId)
-        : data.orders;
+        : data.orders
+      ).filter((o) => !tombstones.has(o.id));
       setOrders(scopedOrders);
       setSettings(data.settings);
       setOplog(data.oplog);
@@ -1911,6 +1913,8 @@ function App() {
         (payload) => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const incoming = cloudToOrder(payload.new);
+            const tombstones = getTombstones();
+            if (tombstones.has(incoming.id)) return;
             setOrders((prev) => {
               const exists = prev.some((o) => o.id === incoming.id);
               const next = exists ? prev.map((o) => (o.id === incoming.id ? incoming : o)) : [incoming, ...prev];
@@ -1993,6 +1997,7 @@ function App() {
       hlc: `${Date.now().toString(36)}:0:${settings.deviceId}`,
     };
 
+    removeTombstone(nextOrder.id);
     await OfflineStorage.saveOrder(nextOrder);
     await OfflineStorage.recordOperation(op);
 
@@ -2023,18 +2028,22 @@ function App() {
 
   const deleteOrder = async (orderId: string) => {
     if (!window.confirm('Delete this order from local sovereign ledger?')) return;
+
+    // 1. Mark as tombstone so sync never resurrects it
+    addTombstone(orderId);
+
+    // 2. Delete locally
     await OfflineStorage.deleteOrder(orderId);
     setOrders((prev) => prev.filter((o) => o.id !== orderId));
     setEditing(undefined);
     notify('Order deleted from local ledger');
 
-    // Cloud delete from Supabase
-    if (navigator.onLine && organization?.id) {
+    // 3. Delete from Supabase cloud (by primary key id)
+    if (navigator.onLine) {
       supabase
         .from('orders')
         .delete()
         .eq('id', orderId)
-        .eq('org_id', organization.id)
         .then(({ error }) => {
           if (error) {
             enqueueMutation('delete', orderId);

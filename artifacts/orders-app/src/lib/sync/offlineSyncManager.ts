@@ -12,6 +12,36 @@ export interface PendingMutation {
 const QUEUE_KEY = 'vendora_pending_mutations';
 const LAST_SYNC_KEY = 'vendora_last_cloud_sync';
 
+const TOMBSTONES_KEY = 'vendora_deleted_order_ids';
+
+export function getTombstones(): Set<string> {
+  try {
+    const raw = localStorage.getItem(TOMBSTONES_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function addTombstone(orderId: string): void {
+  try {
+    const set = getTombstones();
+    set.add(orderId);
+    localStorage.setItem(TOMBSTONES_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
+
+export function removeTombstone(orderId: string): void {
+  try {
+    const set = getTombstones();
+    if (set.has(orderId)) {
+      set.delete(orderId);
+      localStorage.setItem(TOMBSTONES_KEY, JSON.stringify(Array.from(set)));
+    }
+  } catch {}
+}
+
+
 export function getPendingQueue(): PendingMutation[] {
   try {
     const raw = localStorage.getItem(QUEUE_KEY);
@@ -114,7 +144,7 @@ export async function flushPendingMutations(orgId: string): Promise<number> {
           remaining.push(mut);
         }
       } else if (mut.action === 'delete') {
-        const { error } = await supabase.from('orders').delete().eq('id', mut.orderId).eq('org_id', orgId);
+        const { error } = await supabase.from('orders').delete().eq('id', mut.orderId);
         if (!error) {
           synced++;
         } else {
@@ -167,12 +197,16 @@ export async function syncStoreOrders(orgId: string, localOrders?: Order[]): Pro
     await flushPendingMutations(orgId);
 
     // 2. Fetch all cloud orders for this store
-    const cloudOrders = await pullCloudOrders(orgId);
-    if (!cloudOrders) return null;
+    const rawCloudOrders = await pullCloudOrders(orgId);
+    if (!rawCloudOrders) return null;
+
+    // Filter out tombstoned (deleted) orders so cloud sync NEVER resurrects them
+    const tombstones = getTombstones();
+    const cloudOrders = rawCloudOrders.filter((co) => !tombstones.has(co.id));
 
     // 3. Merge cloud orders with local orders (conflict resolution by updatedAt / version)
     const allLocal = localOrders || OfflineStorage.getOrdersSync();
-    const local = allLocal.filter((lo) => lo.orgId === orgId);
+    const local = allLocal.filter((lo) => lo.orgId === orgId && !tombstones.has(lo.id));
     const mergedMap = new Map<string, Order>();
 
     // Put all cloud orders in map
